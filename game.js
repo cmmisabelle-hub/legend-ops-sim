@@ -1,6 +1,9 @@
 const MAX_DAY = 12;
 const TARGET_REVENUE = 1200000;
 const TURN_AP = 5;
+const SAVE_PREFIX = "legendOpsSim.save.";
+const ACTIVE_ACCOUNT_KEY = "legendOpsSim.activeAccount";
+const DEFAULT_ACCOUNT = "默认指挥官";
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const money = (value) => {
@@ -17,6 +20,11 @@ function parseMetricValue(raw) {
   const multiplier = text.endsWith("万") ? 10000 : 1;
   const normalized = text.replace(/万/g, "").replace(/%/g, "");
   return Number(normalized) * multiplier;
+}
+
+function normalizeAccountName(name) {
+  const normalized = String(name || "").trim().replace(/\s+/g, " ").slice(0, 24);
+  return normalized || DEFAULT_ACCOUNT;
 }
 
 const baseState = () => {
@@ -421,7 +429,79 @@ function resolveMission(mission, before, target) {
   return { completed, reward };
 }
 
-let state = baseState();
+function getSaveKey(accountName = activeAccount) {
+  return `${SAVE_PREFIX}${encodeURIComponent(normalizeAccountName(accountName))}`;
+}
+
+function serializeState(target) {
+  return {
+    ...target,
+    selected: Array.from(target.selected || []),
+  };
+}
+
+function hydrateState(rawState) {
+  const hydrated = {
+    ...baseState(),
+    ...rawState,
+    selected: new Set(Array.isArray(rawState?.selected) ? rawState.selected : []),
+    history: Array.isArray(rawState?.history) ? rawState.history : [],
+    log: Array.isArray(rawState?.log) ? rawState.log : [],
+    ended: Boolean(rawState?.ended),
+  };
+  hydrated.mission = rawState?.mission || createMissionForState(hydrated);
+  return hydrated;
+}
+
+function loadAccountState(accountName) {
+  const saved = localStorage.getItem(getSaveKey(accountName));
+  if (!saved) return baseState();
+  try {
+    return hydrateState(JSON.parse(saved));
+  } catch (error) {
+    return baseState();
+  }
+}
+
+function saveCurrentAccount() {
+  if (!state) return;
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, activeAccount);
+  localStorage.setItem(getSaveKey(), JSON.stringify(serializeState(state)));
+}
+
+function updateAccountUI() {
+  elements.activeAccountLabel.textContent = activeAccount;
+  elements.accountNameInput.value = activeAccount;
+  elements.accountHint.textContent = `当前账号：${activeAccount}。本账号进度会自动保存在这台设备的浏览器里。`;
+}
+
+function switchAccount() {
+  const nextAccount = normalizeAccountName(elements.accountNameInput.value);
+  saveCurrentAccount();
+  activeAccount = nextAccount;
+  state = loadAccountState(activeAccount);
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, activeAccount);
+  updateAccountUI();
+  render();
+}
+
+function deleteCurrentAccount() {
+  const confirmed = window.confirm(`确定删除账号“${activeAccount}”的本地存档吗？此操作不可恢复。`);
+  if (!confirmed) return;
+  localStorage.removeItem(getSaveKey());
+  if (activeAccount !== DEFAULT_ACCOUNT) {
+    activeAccount = DEFAULT_ACCOUNT;
+    state = loadAccountState(activeAccount);
+  } else {
+    state = baseState();
+  }
+  saveCurrentAccount();
+  updateAccountUI();
+  render();
+}
+
+let activeAccount = normalizeAccountName(localStorage.getItem(ACTIVE_ACCOUNT_KEY));
+let state = loadAccountState(activeAccount);
 
 const elements = {
   dayLabel: document.querySelector("#dayLabel"),
@@ -433,6 +513,11 @@ const elements = {
   onlineMetric: document.querySelector("#onlineMetric"),
   reputationMetric: document.querySelector("#reputationMetric"),
   cheatMetric: document.querySelector("#cheatMetric"),
+  activeAccountLabel: document.querySelector("#activeAccountLabel"),
+  accountHint: document.querySelector("#accountHint"),
+  accountNameInput: document.querySelector("#accountNameInput"),
+  switchAccountButton: document.querySelector("#switchAccountButton"),
+  deleteAccountButton: document.querySelector("#deleteAccountButton"),
   actions: document.querySelector("#actions"),
   selectedCount: document.querySelector("#selectedCount"),
   commandSummary: document.querySelector("#commandSummary"),
@@ -969,6 +1054,7 @@ function importHistory() {
       selected: new Set(),
       ended: false,
     };
+    saveCurrentAccount();
     render();
     setHistoryFeedback(`已导入历史数据，当前局从 R${state.day} 开始。`, "good");
   } catch (error) {
@@ -1125,6 +1211,7 @@ function simulateDay(manual = true) {
     state.mission = createMissionForState(state);
   }
 
+  saveCurrentAccount();
   if (manual) render();
   if (manual && !result) showTurnReport(report);
 }
@@ -1178,6 +1265,7 @@ function toggleAction(id) {
   } else if (getSelectedAP() + action.ap <= TURN_AP) {
     state.selected.add(id);
   }
+  saveCurrentAccount();
   render();
 }
 
@@ -1201,6 +1289,7 @@ function autoSelect() {
 
 function resetGame() {
   state = baseState();
+  saveCurrentAccount();
   if (elements.resultDialog.open && typeof elements.resultDialog.close === "function") {
     elements.resultDialog.close();
   } else {
@@ -1223,6 +1312,11 @@ elements.actions.addEventListener("click", (event) => {
 elements.nextDayButton.addEventListener("click", () => simulateDay());
 elements.resetButton.addEventListener("click", resetGame);
 elements.dialogResetButton.addEventListener("click", resetGame);
+elements.switchAccountButton.addEventListener("click", switchAccount);
+elements.deleteAccountButton.addEventListener("click", deleteCurrentAccount);
+elements.accountNameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") switchAccount();
+});
 elements.turnReportButton.addEventListener("click", () => {
   if (elements.turnReportDialog.open && typeof elements.turnReportDialog.close === "function") {
     elements.turnReportDialog.close();
@@ -1241,4 +1335,6 @@ elements.autoButton.addEventListener("click", () => {
   render();
 });
 
+updateAccountUI();
+saveCurrentAccount();
 render();
