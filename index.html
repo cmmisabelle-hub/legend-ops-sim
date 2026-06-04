@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>沙域运营局 - 类传奇游戏运营模拟器</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero panel">
+        <div>
+          <p class="eyebrow">第 <span id="dayLabel">1</span> 回合 / 12 · 沙域一区</p>
+          <h1>沙域运营局</h1>
+          <p class="subtitle">你负责一款类传奇 MMO 的首服运营。每回合先花行动点制定运营方案，再统一结算流水、玩家生态和随机事件。</p>
+          <div class="hud-strip" aria-label="赛季规则">
+            <span>12 回合赛季</span>
+            <span>每回合 5 AP</span>
+            <span>随机事件结算</span>
+            <span>失败即停服</span>
+          </div>
+        </div>
+        <div class="goal-card">
+          <span>赛季目标</span>
+          <strong>12 回合内累计流水 120 万</strong>
+          <small>同时保持口碑 ≥ 35，监管风险 &lt; 95。</small>
+        </div>
+      </section>
+
+      <section class="dashboard">
+        <article class="metric panel">
+          <span>现金</span>
+          <strong id="cashMetric">-</strong>
+          <small id="cashHint">可用运营预算</small>
+        </article>
+        <article class="metric panel">
+          <span>上回合流水</span>
+          <strong id="revenueMetric">-</strong>
+          <small id="totalRevenueMetric">累计流水 -</small>
+        </article>
+        <article class="metric panel">
+          <span>活跃玩家</span>
+          <strong id="playersMetric">-</strong>
+          <small id="onlineMetric">峰值在线 -</small>
+        </article>
+        <article class="metric panel">
+          <span>口碑 / 外挂</span>
+          <strong id="reputationMetric">-</strong>
+          <small id="cheatMetric">外挂压力 -</small>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <section class="panel board">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">决策阶段</p>
+              <h2>选择本回合行动</h2>
+            </div>
+            <div class="ap-widget">
+              <small>行动点</small>
+              <div class="selection-count"><span id="selectedCount">0</span>/5 AP</div>
+            </div>
+          </div>
+          <div class="turn-rules">
+            <span>每回合 5 AP</span>
+            <span>行动可组合但不能重复</span>
+            <span>结束回合后统一结算</span>
+          </div>
+          <div id="actions" class="actions"></div>
+          <div class="command-panel">
+            <div class="command-head">
+              <span>本回合指令槽</span>
+              <strong id="commandSummary">等待部署</strong>
+            </div>
+            <div id="commandSlots" class="command-slots"></div>
+            <p id="turnPreview" class="turn-preview">选择行动牌后，会在这里显示本回合的成本和战略意图。</p>
+          </div>
+          <div class="control-row">
+            <button id="nextDayButton" class="primary-button">结束回合</button>
+            <button id="autoButton" class="ghost-button">托管 3 回合</button>
+            <button id="resetButton" class="ghost-button">重开首服</button>
+          </div>
+        </section>
+
+        <aside class="panel status-panel">
+          <div class="section-title compact">
+            <div>
+              <p class="eyebrow">服务器体检</p>
+              <h2>生态状态</h2>
+            </div>
+          </div>
+          <div id="gauges" class="gauges"></div>
+          <div class="phase-box">
+            <span id="phaseLabel">开服冲刺期</span>
+            <p id="phaseText">玩家尝鲜热情高，买量有效，但活动过猛会快速透支信任。</p>
+          </div>
+          <div class="mission-box">
+            <p class="eyebrow">本回合挑战</p>
+            <h3 id="missionTitle">运营目标生成中</h3>
+            <p id="missionText">完成挑战可获得额外资源或生态修复。</p>
+            <small id="missionReward">奖励待定</small>
+          </div>
+        </aside>
+      </section>
+
+      <section class="content-grid lower-grid">
+        <section class="panel chart-panel">
+          <div class="section-title compact">
+            <div>
+              <p class="eyebrow">数据看板</p>
+              <h2>近 12 回合趋势</h2>
+            </div>
+          </div>
+          <div id="chart" class="chart" aria-label="近 12 回合趋势图"></div>
+          <div class="legend-row">
+            <span><i class="line-revenue"></i>流水</span>
+            <span><i class="line-online"></i>在线</span>
+            <span><i class="line-reputation"></i>口碑</span>
+          </div>
+        </section>
+
+        <section class="panel log-panel">
+          <div class="section-title compact">
+            <div>
+              <p class="eyebrow">运营日志</p>
+              <h2>事件回放</h2>
+            </div>
+          </div>
+          <ol id="log" class="log"></ol>
+        </section>
+      </section>
+
+      <section class="content-grid forecast-grid">
+        <section class="panel history-panel">
+          <div class="section-title compact">
+            <div>
+              <p class="eyebrow">历史推演室</p>
+              <h2>输入历史数值</h2>
+            </div>
+          </div>
+          <p class="helper-text">每行一回合，格式：回合,活跃玩家,峰值在线,本回合流水,口碑,外挂,经济,热度。流水可写 68000 或 6.8万，不要使用千分位逗号。</p>
+          <textarea id="historyInput" class="history-input" spellcheck="false">1,5200,820,0,58,24,56,64
+2,6100,980,6.8万,59,28,55,69
+3,7200,1220,9.4万,55,34,51,75</textarea>
+          <div class="forecast-form">
+            <label>
+              当前现金
+              <input id="historyCash" type="text" value="32万" />
+            </label>
+            <label>
+              累计流水
+              <input id="historyTotalRevenue" type="text" placeholder="留空则累加历史流水" />
+            </label>
+            <label>
+              预测回合数
+              <input id="forecastDays" type="number" min="1" max="12" value="5" />
+            </label>
+            <label>
+              未来策略
+              <select id="forecastPlan">
+                <option value="steady">稳健续命</option>
+                <option value="growth">猛砸买量</option>
+                <option value="profit">压榨流水</option>
+                <option value="survival">救火优先</option>
+                <option value="selected">沿用当前选中动作</option>
+                <option value="none">不主动操作</option>
+              </select>
+            </label>
+          </div>
+          <div class="control-row">
+            <button id="forecastButton" class="primary-button">估算未来</button>
+            <button id="importHistoryButton" class="ghost-button">导入为当前局</button>
+          </div>
+          <p id="historyFeedback" class="feedback">输入后先点“估算未来”，满意后再导入当前局。</p>
+        </section>
+
+        <section class="panel forecast-panel">
+          <div class="section-title compact">
+            <div>
+              <p class="eyebrow">未来估算</p>
+              <h2>逻辑推演结果</h2>
+            </div>
+          </div>
+          <div id="forecastSummary" class="forecast-summary">
+            <div class="empty-state">等待历史数据。估算不会改变当前运营进度。</div>
+          </div>
+          <div id="forecastTable" class="forecast-table"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="resultDialog" class="result-dialog">
+      <div class="dialog-card">
+        <p class="eyebrow" id="resultKicker">赛季结算</p>
+        <h2 id="resultTitle">-</h2>
+        <p id="resultText">-</p>
+        <div class="dialog-stats" id="resultStats"></div>
+        <button id="dialogResetButton" class="primary-button">再开一服</button>
+      </div>
+    </dialog>
+
+    <dialog id="turnReportDialog" class="result-dialog turn-report-dialog">
+      <div class="dialog-card">
+        <p class="eyebrow" id="turnReportKicker">回合结算</p>
+        <h2 id="turnReportTitle">-</h2>
+        <div class="dialog-stats" id="turnReportStats"></div>
+        <div class="report-events" id="turnReportEvents"></div>
+        <button id="turnReportButton" class="primary-button">继续下一回合</button>
+      </div>
+    </dialog>
+
+    <script src="game.js"></script>
+  </body>
+</html>
