@@ -27,6 +27,22 @@
         </div>
       </section>
 
+      <section class="account-panel panel">
+        <div class="account-info">
+          <p class="eyebrow">运营账号</p>
+          <h2 id="activeAccountLabel">默认指挥官</h2>
+          <p id="accountHint">每个账号使用独立本地存档。换设备或换浏览器不会自动同步。</p>
+        </div>
+        <div class="account-controls">
+          <label>
+            账号名
+            <input id="accountNameInput" type="text" maxlength="24" placeholder="输入账号名" />
+          </label>
+          <button id="switchAccountButton" class="primary-button">进入账号</button>
+          <button id="deleteAccountButton" class="ghost-button danger-button">删除当前账号</button>
+        </div>
+      </section>
+
       <section class="dashboard">
         <article class="metric panel">
           <span>现金</span>
