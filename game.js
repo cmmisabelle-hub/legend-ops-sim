@@ -517,6 +517,7 @@ const elements = {
   accountHint: document.querySelector("#accountHint"),
   accountNameInput: document.querySelector("#accountNameInput"),
   switchAccountButton: document.querySelector("#switchAccountButton"),
+  resetAccountButton: document.querySelector("#resetAccountButton"),
   deleteAccountButton: document.querySelector("#deleteAccountButton"),
   actions: document.querySelector("#actions"),
   selectedCount: document.querySelector("#selectedCount"),
@@ -1303,6 +1304,13 @@ function resetGame() {
   render();
 }
 
+function resetCurrentAccount() {
+  const confirmed = window.confirm(`确定重置账号“${activeAccount}”的运营进度吗？账号名会保留，当前进度会恢复到初始状态。`);
+  if (!confirmed) return;
+  resetGame();
+  elements.accountHint.textContent = `账号“${activeAccount}”已重置为初始进度。后续进度会继续自动保存。`;
+}
+
 elements.actions.addEventListener("click", (event) => {
   const card = event.target.closest(".action-card");
   if (!card) return;
@@ -1313,6 +1321,7 @@ elements.nextDayButton.addEventListener("click", () => simulateDay());
 elements.resetButton.addEventListener("click", resetGame);
 elements.dialogResetButton.addEventListener("click", resetGame);
 elements.switchAccountButton.addEventListener("click", switchAccount);
+elements.resetAccountButton.addEventListener("click", resetCurrentAccount);
 elements.deleteAccountButton.addEventListener("click", deleteCurrentAccount);
 elements.accountNameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") switchAccount();
