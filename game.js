@@ -299,6 +299,15 @@ const planNames = {
   none: "不主动操作",
 };
 
+const advisorGoalNames = {
+  balanced: "稳住生态",
+  revenue: "冲刺流水",
+  growth: "拉新做热度",
+  reputation: "修复口碑",
+  antiCheat: "治理外挂",
+  survival: "救火续命",
+};
+
 function getSelectedAP(target = state) {
   return actions
     .filter((action) => target.selected.has(action.id))
@@ -482,6 +491,7 @@ function switchAccount() {
   state = loadAccountState(activeAccount);
   localStorage.setItem(ACTIVE_ACCOUNT_KEY, activeAccount);
   updateAccountUI();
+  clearAdvisorRecommendation(`已切换到账号“${activeAccount}”，请基于新进度重新生成 AI 建议。`);
   render();
 }
 
@@ -497,11 +507,13 @@ function deleteCurrentAccount() {
   }
   saveCurrentAccount();
   updateAccountUI();
+  clearAdvisorRecommendation("当前账号存档已删除，请基于新的默认进度重新生成 AI 建议。");
   render();
 }
 
 let activeAccount = normalizeAccountName(localStorage.getItem(ACTIVE_ACCOUNT_KEY));
 let state = loadAccountState(activeAccount);
+let lastAdvisorRecommendation = null;
 
 const elements = {
   dayLabel: document.querySelector("#dayLabel"),
@@ -557,6 +569,11 @@ const elements = {
   historyFeedback: document.querySelector("#historyFeedback"),
   forecastSummary: document.querySelector("#forecastSummary"),
   forecastTable: document.querySelector("#forecastTable"),
+  advisorGoal: document.querySelector("#advisorGoal"),
+  advisorPrompt: document.querySelector("#advisorPrompt"),
+  advisorButton: document.querySelector("#advisorButton"),
+  applyAdvisorButton: document.querySelector("#applyAdvisorButton"),
+  advisorOutput: document.querySelector("#advisorOutput"),
 };
 
 function createMods() {
@@ -766,6 +783,244 @@ function applyActionMods(mods) {
 function setHistoryFeedback(message, status = "") {
   elements.historyFeedback.textContent = message;
   elements.historyFeedback.className = `feedback ${status}`.trim();
+}
+
+function getAdvisorSignals(prompt) {
+  const text = String(prompt || "").toLowerCase();
+  return {
+    revenue: /流水|营收|收入|充值|赚钱|回本|老板|roi/.test(text),
+    growth: /拉新|新增|买量|热度|在线|dau|用户|获客/.test(text),
+    reputation: /口碑|投诉|舆情|骂|流失|留存|生态|稳定|别崩|不要伤/.test(text),
+    antiCheat: /外挂|脚本|打金|工作室|封号|封挂/.test(text),
+    survival: /现金|预算|没钱|亏|风险|停服|救火|续命|保命|红线/.test(text),
+    avoidReputationLoss: /不要.*口碑|不能.*口碑|别.*口碑|不伤|别崩|少骂|稳口碑/.test(text),
+    cashTight: /现金|预算|没钱|少花|省钱|低成本/.test(text),
+    aggressive: /冲|猛|激进|拉满|尽快|快速/.test(text),
+  };
+}
+
+function resolveAdvisorGoal(goal, signals) {
+  if (signals.antiCheat && state.cheat > 42) return "antiCheat";
+  if (signals.survival && (state.cash < 90000 || state.risk > 70 || state.reputation < 38)) return "survival";
+  if (goal !== "balanced") return goal;
+  if (signals.revenue) return "revenue";
+  if (signals.growth) return "growth";
+  if (signals.reputation) return "reputation";
+  if (signals.antiCheat) return "antiCheat";
+  if (signals.survival) return "survival";
+  return "balanced";
+}
+
+function pushAdvisorCandidate(candidates, id, blocked = false) {
+  if (!blocked && !candidates.includes(id)) candidates.push(id);
+}
+
+function getAdvisorActionIds(goal, prompt) {
+  const signals = getAdvisorSignals(prompt);
+  const effectiveGoal = resolveAdvisorGoal(goal, signals);
+  const candidates = [];
+  const cashTight = signals.cashTight || state.cash < 85000;
+  const protectReputation = signals.avoidReputationLoss || state.reputation < 44;
+
+  pushAdvisorCandidate(candidates, "banwave", state.cheat < 50 && effectiveGoal !== "antiCheat");
+  pushAdvisorCandidate(candidates, "support", state.reputation >= 48 && state.serverHealth >= 54 && effectiveGoal !== "reputation" && effectiveGoal !== "survival");
+  pushAdvisorCandidate(candidates, "merge", !(state.day >= 6 && state.players < 2600));
+
+  if (effectiveGoal === "revenue") {
+    pushAdvisorCandidate(candidates, "rebate", protectReputation || state.risk > 78);
+    pushAdvisorCandidate(candidates, "skin");
+    pushAdvisorCandidate(candidates, "dropDown", protectReputation || state.economy > 70);
+    pushAdvisorCandidate(candidates, "siege", state.guildBalance < 42 || cashTight);
+  }
+
+  if (effectiveGoal === "growth") {
+    pushAdvisorCandidate(candidates, "ads", cashTight);
+    pushAdvisorCandidate(candidates, "streamer", state.cash < 210000 || protectReputation);
+    pushAdvisorCandidate(candidates, "siege", state.guildBalance < 42 || cashTight);
+    pushAdvisorCandidate(candidates, "skin");
+  }
+
+  if (effectiveGoal === "reputation") {
+    pushAdvisorCandidate(candidates, "support");
+    pushAdvisorCandidate(candidates, "banwave", state.cheat < 32);
+    pushAdvisorCandidate(candidates, "dropUp", state.economy < 42);
+    pushAdvisorCandidate(candidates, "skin");
+  }
+
+  if (effectiveGoal === "antiCheat") {
+    pushAdvisorCandidate(candidates, "banwave");
+    pushAdvisorCandidate(candidates, "support", cashTight && state.cheat < 58);
+    pushAdvisorCandidate(candidates, "dropDown", protectReputation || state.economy > 64);
+    pushAdvisorCandidate(candidates, "skin");
+  }
+
+  if (effectiveGoal === "survival") {
+    pushAdvisorCandidate(candidates, "support", state.cash < 15000 && state.reputation > 45);
+    pushAdvisorCandidate(candidates, "banwave", state.cheat < 34 || (cashTight && state.cheat < 58));
+    pushAdvisorCandidate(candidates, "merge", !(state.day >= 6 && state.players < 3600 && state.cash > 85000));
+    pushAdvisorCandidate(candidates, "skin", state.cash < -30000);
+    pushAdvisorCandidate(candidates, "dropDown", protectReputation || state.economy > 62);
+  }
+
+  if (effectiveGoal === "balanced") {
+    pushAdvisorCandidate(candidates, "banwave", state.cheat < 46);
+    pushAdvisorCandidate(candidates, "support", state.reputation >= 46 && state.serverHealth >= 52);
+    pushAdvisorCandidate(candidates, "skin");
+    pushAdvisorCandidate(candidates, "ads", cashTight || state.hype > 64);
+    pushAdvisorCandidate(candidates, "siege", state.guildBalance < 48 || state.hype < 44 || cashTight);
+  }
+
+  if (signals.aggressive && !protectReputation) {
+    pushAdvisorCandidate(candidates, "rebate", state.risk > 78);
+    pushAdvisorCandidate(candidates, "streamer", state.cash < 210000);
+  }
+  if (signals.reputation) pushAdvisorCandidate(candidates, "support");
+  if (signals.antiCheat) pushAdvisorCandidate(candidates, "banwave");
+  if (!candidates.length) pushAdvisorCandidate(candidates, state.cash > 50000 ? "skin" : "none");
+
+  return fitActionIds(state, candidates.filter((id) => id !== "none"));
+}
+
+function cloneStateForProjection(target) {
+  return {
+    ...target,
+    history: target.history.map((item) => ({ ...item })),
+    log: target.log.map((item) => ({ ...item })),
+    selected: new Set(target.selected),
+    mission: target.mission ? { ...target.mission } : createMissionForState(target),
+  };
+}
+
+function getAdvisorActionReason(id) {
+  if (id === "ads") return "用买量补足新增池，适合热度不足或需要拉高后续自然流量。";
+  if (id === "streamer") return "用直播事件制造在线峰值，但只在现金和口碑能承受时建议。";
+  if (id === "rebate") return "短期放大流水，适合冲榜；AI 已同步检查口碑和监管红线。";
+  if (id === "skin") return "提供稳健付费点，不破坏战力，是低风险补流水动作。";
+  if (id === "dropUp") return "提高散人爽感，优先用于修复口碑和留存。";
+  if (id === "dropDown") return "修复经济和刺激付费，但会伤口碑，需要搭配服务或谨慎使用。";
+  if (id === "banwave") return "外挂压力会侵蚀经济和口碑，先清理工作室能降低后续流失。";
+  if (id === "support") return "客服和补偿可以压住舆情，同时修复服务器稳定性。";
+  if (id === "siege") return "攻沙活动能拉高在线和热度，适合行会平衡没有崩时使用。";
+  if (id === "merge") return "中后期救活鬼服，用合服恢复市场流动和玩家密度。";
+  return "保持观察，避免在风险不明时增加额外成本。";
+}
+
+function getAdvisorWarnings(row, actionIds) {
+  const warnings = [];
+  if (state.cash < 60000) warnings.push(`现金只有 ${money(state.cash)}，建议避免连续高成本买量。`);
+  if (row.cash < 50000) warnings.push(`预计结算后现金约 ${money(row.cash)}，下一回合需要控预算。`);
+  if (row.reputation < 35) warnings.push("预计口碑会接近危险线，后续应补客服或减少返利压榨。");
+  if (state.cheat > 58 || row.risk > 80) warnings.push("外挂或监管风险偏高，激进投放会放大停服概率。");
+  if (actionIds.includes("rebate") || actionIds.includes("dropDown")) warnings.push("本组合含商业化压榨动作，建议盯紧社区反馈和投诉量。");
+  if (!warnings.length) warnings.push("暂无硬性红线，本回合重点是比较流水收益和生态消耗是否划算。");
+  return warnings;
+}
+
+function getAdvisorSummary(goal, row, actionIds) {
+  const actionNames = actionIds.map((id) => actions.find((action) => action.id === id)?.name).filter(Boolean);
+  const expectedProgress = TARGET_REVENUE * (state.day / MAX_DAY);
+  const progressText = state.totalRevenue < expectedProgress ? "当前流水进度落后赛季目标" : "当前流水进度基本可控";
+  const actionText = actionNames.length ? actionNames.join(" + ") : "暂不主动操作";
+  return `${progressText}。AI 建议本回合以“${advisorGoalNames[goal]}”为主线，采用 ${actionText}，预计本回合流水约 ${money(row.revenue)}，结算后现金约 ${money(row.cash)}，口碑 / 风险约 ${Math.round(row.reputation)} / ${Math.round(row.risk)}。`;
+}
+
+function buildAdvisorRecommendation() {
+  const selectedGoal = elements.advisorGoal.value;
+  const prompt = elements.advisorPrompt.value;
+  const signals = getAdvisorSignals(prompt);
+  const goal = resolveAdvisorGoal(selectedGoal, signals);
+  const actionIds = getAdvisorActionIds(selectedGoal, prompt);
+  const projection = cloneStateForProjection(state);
+  const row = simulateForecastDay(projection, actionIds);
+  const cost = actionIds.reduce((sum, id) => sum + (actions.find((action) => action.id === id)?.cost || 0), 0);
+  const ap = actionIds.reduce((sum, id) => sum + (actions.find((action) => action.id === id)?.ap || 0), 0);
+  return {
+    goal,
+    actionIds,
+    row,
+    cost,
+    ap,
+    summary: getAdvisorSummary(goal, row, actionIds),
+    reasons: actionIds.length ? actionIds.map(getAdvisorActionReason) : ["当前现金或风险不支持新增动作，先观察一回合能保留操作空间。"],
+    warnings: getAdvisorWarnings(row, actionIds),
+  };
+}
+
+function kpiClass(after, before, inverted = false) {
+  const delta = after - before;
+  if (Math.abs(delta) < 1) return "";
+  return inverted ? (delta <= 0 ? "good" : "bad") : delta >= 0 ? "good" : "bad";
+}
+
+function renderAdvisorRecommendation(recommendation, message = "") {
+  const actionNames = recommendation.actionIds.map((id) => actions.find((action) => action.id === id)?.name).filter(Boolean);
+  elements.applyAdvisorButton.disabled = !recommendation.actionIds.length || state.ended;
+  elements.advisorOutput.innerHTML = `
+    <div class="advisor-card good">
+      <h3>${message || `建议目标：${advisorGoalNames[recommendation.goal]}`}</h3>
+      <p>${recommendation.summary}</p>
+    </div>
+    <div class="advisor-card">
+      <h3>推荐动作</h3>
+      <div class="advisor-picks">${
+        actionNames.length
+          ? actionNames.map((name) => `<span class="advisor-pick">${name}</span>`).join("")
+          : `<span class="advisor-pick">不主动操作</span>`
+      }</div>
+    </div>
+    <div class="advisor-card">
+      <h3>预期指标</h3>
+      <div class="advisor-kpis">
+        <span class="advisor-kpi good">成本 ${money(recommendation.cost)} / ${recommendation.ap} AP</span>
+        <span class="advisor-kpi ${kpiClass(recommendation.row.revenue, state.lastRevenue)}">流水 ${money(recommendation.row.revenue)}</span>
+        <span class="advisor-kpi ${kpiClass(recommendation.row.players, state.players)}">活跃 ${Math.round(recommendation.row.players).toLocaleString("zh-CN")}</span>
+        <span class="advisor-kpi ${kpiClass(recommendation.row.reputation, state.reputation)}">口碑 ${Math.round(recommendation.row.reputation)}</span>
+        <span class="advisor-kpi ${kpiClass(recommendation.row.risk, state.risk, true)}">风险 ${Math.round(recommendation.row.risk)}</span>
+      </div>
+    </div>
+    <div class="advisor-card">
+      <h3>AI 解释</h3>
+      <div class="advisor-lines">${recommendation.reasons.map((line) => `<div class="advisor-line">${line}</div>`).join("")}</div>
+    </div>
+    <div class="advisor-card warning">
+      <h3>风险预警</h3>
+      <div class="advisor-lines">${recommendation.warnings.map((line) => `<div class="advisor-line">${line}</div>`).join("")}</div>
+    </div>`;
+}
+
+function runAdvisor() {
+  lastAdvisorRecommendation = buildAdvisorRecommendation();
+  renderAdvisorRecommendation(lastAdvisorRecommendation);
+}
+
+function applyAdvisorRecommendation() {
+  if (!lastAdvisorRecommendation || state.ended) return;
+  state.selected.clear();
+  lastAdvisorRecommendation.actionIds.forEach((id) => state.selected.add(id));
+  saveCurrentAccount();
+  render();
+  renderAdvisorRecommendation(lastAdvisorRecommendation, "已套用到本回合指令槽");
+}
+
+function getAdvisorTurnReview(report) {
+  const lines = [];
+  const revenueDelta = report.after.lastRevenue - report.before.lastRevenue;
+  const playerDelta = report.after.players - report.before.players;
+  const reputationDelta = report.after.reputation - report.before.reputation;
+  if (revenueDelta > 20000) lines.push(`流水环比增加 ${money(revenueDelta)}，商业化动作有效。`);
+  if (playerDelta < -250) lines.push(`活跃减少 ${Math.abs(playerDelta).toLocaleString("zh-CN")}，需要关注留存和外挂压力。`);
+  if (reputationDelta < -3) lines.push("口碑下降较快，下回合建议补客服、封挂或减少压榨动作。");
+  if (report.after.cheat > 58) lines.push("外挂仍处高位，继续拖延会伤经济和散人口碑。");
+  if (report.after.cash < 60000) lines.push("现金进入预警区，下一回合不宜连续高成本投放。");
+  if (report.mission.completed) lines.push("挑战完成，说明本回合动作与短期目标匹配。");
+  if (!lines.length) lines.push("本回合走势平稳，建议继续比较不同策略的现金消耗和生态收益。");
+  return lines.join(" ");
+}
+
+function clearAdvisorRecommendation(message = "等待生成建议。比赛演示时可以先选目标，再输入一句运营诉求，让 AI 给出本回合动作组合和风险解释。") {
+  lastAdvisorRecommendation = null;
+  elements.applyAdvisorButton.disabled = true;
+  elements.advisorOutput.innerHTML = `<div class="empty-state">${message}</div>`;
 }
 
 function parseHistoryRows(raw) {
@@ -1056,6 +1311,7 @@ function importHistory() {
       ended: false,
     };
     saveCurrentAccount();
+    clearAdvisorRecommendation("历史数据已导入，请基于导入后的服务器状态重新生成 AI 建议。");
     render();
     setHistoryFeedback(`已导入历史数据，当前局从 R${state.day} 开始。`, "good");
   } catch (error) {
@@ -1098,6 +1354,7 @@ function showTurnReport(report) {
   elements.turnReportEvents.innerHTML = `
     <div class="report-line"><strong>执行指令</strong><span>${report.actions.length ? report.actions.join("、") : "无主动操作"}</span></div>
     <div class="report-line"><strong>玩家流动</strong><span>新增 ${report.acquisition.toLocaleString("zh-CN")}，流失 ${report.churned.toLocaleString("zh-CN")}</span></div>
+    <div class="report-line good"><strong>AI 复盘</strong><span>${getAdvisorTurnReview(report)}</span></div>
     <div class="report-line ${report.mission.completed ? "good" : "bad"}"><strong>${report.mission.title}</strong><span>${
       report.mission.completed ? `完成，${report.mission.reward}` : "未完成，未获得挑战奖励"
     }</span></div>
@@ -1213,6 +1470,7 @@ function simulateDay(manual = true) {
   }
 
   saveCurrentAccount();
+  clearAdvisorRecommendation("回合已结算，请基于新一回合数据重新生成 AI 建议。");
   if (manual) render();
   if (manual && !result) showTurnReport(report);
 }
@@ -1290,6 +1548,7 @@ function autoSelect() {
 
 function resetGame() {
   state = baseState();
+  clearAdvisorRecommendation("账号进度已回到初始状态，可以重新生成 AI 建议。");
   saveCurrentAccount();
   if (elements.resultDialog.open && typeof elements.resultDialog.close === "function") {
     elements.resultDialog.close();
@@ -1333,6 +1592,9 @@ elements.turnReportButton.addEventListener("click", () => {
     elements.turnReportDialog.removeAttribute("open");
   }
 });
+elements.advisorButton.addEventListener("click", runAdvisor);
+elements.applyAdvisorButton.addEventListener("click", applyAdvisorRecommendation);
+elements.advisorGoal.addEventListener("change", () => clearAdvisorRecommendation("目标已切换，请重新生成 AI 建议。"));
 elements.forecastButton.addEventListener("click", runForecast);
 elements.importHistoryButton.addEventListener("click", importHistory);
 elements.autoButton.addEventListener("click", () => {

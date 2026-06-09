@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>做了个传奇 - 类传奇游戏运营模拟器</title>
+    <title>做了个传奇 - AI 运营沙盘</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">第 <span id="dayLabel">1</span> 回合 / 12 · 沙域一区</p>
           <h1>做了个传奇</h1>
-          <p class="subtitle">你负责一款类传奇 MMO 的首服运营。每回合先花行动点制定运营方案，再统一结算流水、玩家生态和随机事件。</p>
+          <p class="subtitle">你负责一款类传奇 MMO 的首服运营。AI 参谋会根据当前服数据推荐动作、解释风险，并推演流水、玩家生态和随机事件。</p>
           <div class="hud-strip" aria-label="赛季规则">
             <span>12 回合赛季</span>
             <span>每回合 5 AP</span>
@@ -65,6 +65,43 @@
           <strong id="reputationMetric">-</strong>
           <small id="cheatMetric">外挂压力 -</small>
         </article>
+      </section>
+
+      <section class="ai-panel panel" aria-labelledby="advisorTitle">
+        <div class="advisor-head">
+          <div>
+            <p class="eyebrow">AI 运营参谋</p>
+            <h2 id="advisorTitle">传奇 MMO 运营 Copilot</h2>
+            <p>选择业务目标或输入运营意图，AI 会基于当前服生态生成本回合行动建议、风险预警和可解释推演。</p>
+          </div>
+          <span class="advisor-badge">本地推演 · 可离线演示</span>
+        </div>
+        <div class="advisor-grid">
+          <div class="advisor-controls">
+            <label>
+              本回合目标
+              <select id="advisorGoal">
+                <option value="balanced">稳住生态</option>
+                <option value="revenue">冲刺流水</option>
+                <option value="growth">拉新做热度</option>
+                <option value="reputation">修复口碑</option>
+                <option value="antiCheat">治理外挂</option>
+                <option value="survival">救火续命</option>
+              </select>
+            </label>
+            <label>
+              运营意图
+              <textarea id="advisorPrompt" rows="3" placeholder="例如：想冲流水，但不要把口碑打崩；或者：外挂太高、现金也不多，怎么排动作？"></textarea>
+            </label>
+            <div class="control-row advisor-actions">
+              <button id="advisorButton" class="primary-button">生成 AI 建议</button>
+              <button id="applyAdvisorButton" class="ghost-button" disabled>一键套用建议</button>
+            </div>
+          </div>
+          <div id="advisorOutput" class="advisor-output">
+            <div class="empty-state">等待生成建议。比赛演示时可以先选目标，再输入一句运营诉求，让 AI 给出本回合动作组合和风险解释。</div>
+          </div>
+        </div>
       </section>
 
       <section class="content-grid">
