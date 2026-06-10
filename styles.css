@@ -471,6 +471,64 @@ h2 {
   background: linear-gradient(145deg, rgba(255, 159, 10, 0.16), rgba(255, 255, 255, 0.052));
 }
 
+.advisor-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.advisor-plan {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(139, 124, 255, 0.14), transparent 9rem),
+    rgba(255, 255, 255, 0.052);
+}
+
+.advisor-plan.recommended {
+  border-color: rgba(255, 209, 102, 0.38);
+  box-shadow: var(--glow-gold);
+}
+
+.advisor-plan-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.advisor-plan-head h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.advisor-plan-head span {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #1b2233;
+  font-size: 0.76rem;
+  font-weight: 900;
+  background: linear-gradient(180deg, #fff1a8, var(--gold));
+}
+
+.advisor-plan p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-weight: 560;
+  line-height: 1.55;
+}
+
+.advisor-plan-button {
+  width: 100%;
+  text-align: center;
+}
+
 .advisor-picks,
 .advisor-kpis {
   display: flex;
@@ -1214,7 +1272,7 @@ h2 {
 }
 
 .result-dialog {
-  width: min(560px, calc(100% - 28px));
+  width: min(680px, calc(100% - 28px));
   padding: 0;
   border: 0;
   border-radius: 28px;
@@ -1312,10 +1370,17 @@ h2 {
   background: rgba(255, 77, 94, 0.07);
 }
 
+.report-line.spotlight {
+  border-color: rgba(255, 209, 102, 0.32);
+  color: #ffffff;
+  background: linear-gradient(145deg, rgba(255, 209, 102, 0.18), rgba(139, 124, 255, 0.12));
+}
+
 @media (max-width: 980px) {
   .hero,
   .account-panel,
   .advisor-grid,
+  .advisor-plan-grid,
   .content-grid,
   .lower-grid,
   .forecast-grid {

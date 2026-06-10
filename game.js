@@ -815,29 +815,32 @@ function pushAdvisorCandidate(candidates, id, blocked = false) {
   if (!blocked && !candidates.includes(id)) candidates.push(id);
 }
 
-function getAdvisorActionIds(goal, prompt) {
+function getAdvisorActionIds(goal, prompt, mode = "steady") {
   const signals = getAdvisorSignals(prompt);
   const effectiveGoal = resolveAdvisorGoal(goal, signals);
   const candidates = [];
   const cashTight = signals.cashTight || state.cash < 85000;
-  const protectReputation = signals.avoidReputationLoss || state.reputation < 44;
+  const protectReputation = mode !== "bold" && (signals.avoidReputationLoss || state.reputation < 44);
+  const allowExpensive = mode === "bold" && state.cash > 150000;
 
   pushAdvisorCandidate(candidates, "banwave", state.cheat < 50 && effectiveGoal !== "antiCheat");
   pushAdvisorCandidate(candidates, "support", state.reputation >= 48 && state.serverHealth >= 54 && effectiveGoal !== "reputation" && effectiveGoal !== "survival");
   pushAdvisorCandidate(candidates, "merge", !(state.day >= 6 && state.players < 2600));
 
   if (effectiveGoal === "revenue") {
-    pushAdvisorCandidate(candidates, "rebate", protectReputation || state.risk > 78);
+    pushAdvisorCandidate(candidates, "rebate", protectReputation || state.risk > (mode === "bold" ? 88 : 78));
     pushAdvisorCandidate(candidates, "skin");
-    pushAdvisorCandidate(candidates, "dropDown", protectReputation || state.economy > 70);
+    pushAdvisorCandidate(candidates, "dropDown", protectReputation || state.economy > (mode === "bold" ? 82 : 70));
     pushAdvisorCandidate(candidates, "siege", state.guildBalance < 42 || cashTight);
+    pushAdvisorCandidate(candidates, "streamer", !allowExpensive);
   }
 
   if (effectiveGoal === "growth") {
     pushAdvisorCandidate(candidates, "ads", cashTight);
-    pushAdvisorCandidate(candidates, "streamer", state.cash < 210000 || protectReputation);
+    pushAdvisorCandidate(candidates, "streamer", state.cash < (mode === "bold" ? 150000 : 210000) || protectReputation);
     pushAdvisorCandidate(candidates, "siege", state.guildBalance < 42 || cashTight);
     pushAdvisorCandidate(candidates, "skin");
+    pushAdvisorCandidate(candidates, "rebate", mode !== "bold" || state.risk > 82 || state.reputation < 38);
   }
 
   if (effectiveGoal === "reputation") {
@@ -863,14 +866,15 @@ function getAdvisorActionIds(goal, prompt) {
   }
 
   if (effectiveGoal === "balanced") {
-    pushAdvisorCandidate(candidates, "banwave", state.cheat < 46);
-    pushAdvisorCandidate(candidates, "support", state.reputation >= 46 && state.serverHealth >= 52);
+    pushAdvisorCandidate(candidates, "banwave", state.cheat < (mode === "bold" ? 55 : 46));
+    pushAdvisorCandidate(candidates, "support", state.reputation >= (mode === "bold" ? 38 : 46) && state.serverHealth >= 52);
     pushAdvisorCandidate(candidates, "skin");
     pushAdvisorCandidate(candidates, "ads", cashTight || state.hype > 64);
     pushAdvisorCandidate(candidates, "siege", state.guildBalance < 48 || state.hype < 44 || cashTight);
+    pushAdvisorCandidate(candidates, "rebate", mode !== "bold" || state.risk > 82 || state.reputation < 38);
   }
 
-  if (signals.aggressive && !protectReputation) {
+  if ((signals.aggressive || mode === "bold") && !protectReputation) {
     pushAdvisorCandidate(candidates, "rebate", state.risk > 78);
     pushAdvisorCandidate(candidates, "streamer", state.cash < 210000);
   }
@@ -924,25 +928,46 @@ function getAdvisorSummary(goal, row, actionIds) {
   return `${progressText}。AI 建议本回合以“${advisorGoalNames[goal]}”为主线，采用 ${actionText}，预计本回合流水约 ${money(row.revenue)}，结算后现金约 ${money(row.cash)}，口碑 / 风险约 ${Math.round(row.reputation)} / ${Math.round(row.risk)}。`;
 }
 
+function buildAdvisorPlan(goal, prompt, mode) {
+  const actionIds = getAdvisorActionIds(goal, prompt, mode);
+  const projection = cloneStateForProjection(state);
+  const row = simulateForecastDay(projection, actionIds);
+  const cost = actionIds.reduce((sum, id) => sum + (actions.find((action) => action.id === id)?.cost || 0), 0);
+  const ap = actionIds.reduce((sum, id) => sum + (actions.find((action) => action.id === id)?.ap || 0), 0);
+  const label = mode === "bold" ? "豪赌方案" : "稳健方案";
+  const pitch = mode === "bold" ? "优先追求短期爆发，适合需要制造名场面或冲 KPI。" : "优先守住生态和现金，适合稳住长线流水池。";
+  return {
+    mode,
+    label,
+    pitch,
+    actionIds,
+    row,
+    cost,
+    ap,
+    reasons: actionIds.length ? actionIds.map(getAdvisorActionReason) : ["当前现金或风险不支持新增动作，先观察一回合能保留操作空间。"],
+    warnings: getAdvisorWarnings(row, actionIds),
+  };
+}
+
 function buildAdvisorRecommendation() {
   const selectedGoal = elements.advisorGoal.value;
   const prompt = elements.advisorPrompt.value;
   const signals = getAdvisorSignals(prompt);
   const goal = resolveAdvisorGoal(selectedGoal, signals);
-  const actionIds = getAdvisorActionIds(selectedGoal, prompt);
-  const projection = cloneStateForProjection(state);
-  const row = simulateForecastDay(projection, actionIds);
-  const cost = actionIds.reduce((sum, id) => sum + (actions.find((action) => action.id === id)?.cost || 0), 0);
-  const ap = actionIds.reduce((sum, id) => sum + (actions.find((action) => action.id === id)?.ap || 0), 0);
+  const steadyPlan = buildAdvisorPlan(selectedGoal, prompt, "steady");
+  const boldPlan = buildAdvisorPlan(selectedGoal, prompt, "bold");
+  const primaryPlan = boldPlan.row.revenue > steadyPlan.row.revenue * 1.18 && boldPlan.row.reputation >= 34 && boldPlan.row.risk < 88 ? boldPlan : steadyPlan;
   return {
     goal,
-    actionIds,
-    row,
-    cost,
-    ap,
-    summary: getAdvisorSummary(goal, row, actionIds),
-    reasons: actionIds.length ? actionIds.map(getAdvisorActionReason) : ["当前现金或风险不支持新增动作，先观察一回合能保留操作空间。"],
-    warnings: getAdvisorWarnings(row, actionIds),
+    actionIds: primaryPlan.actionIds,
+    row: primaryPlan.row,
+    cost: primaryPlan.cost,
+    ap: primaryPlan.ap,
+    summary: getAdvisorSummary(goal, primaryPlan.row, primaryPlan.actionIds),
+    reasons: primaryPlan.reasons,
+    warnings: primaryPlan.warnings,
+    primaryMode: primaryPlan.mode,
+    plans: [steadyPlan, boldPlan],
   };
 }
 
@@ -955,11 +980,35 @@ function kpiClass(after, before, inverted = false) {
 function renderAdvisorRecommendation(recommendation, message = "") {
   const actionNames = recommendation.actionIds.map((id) => actions.find((action) => action.id === id)?.name).filter(Boolean);
   elements.applyAdvisorButton.disabled = !recommendation.actionIds.length || state.ended;
+  const planCards = recommendation.plans
+    .map((plan) => {
+      const planActions = plan.actionIds.map((id) => actions.find((action) => action.id === id)?.name).filter(Boolean);
+      return `
+        <div class="advisor-plan ${plan.mode === recommendation.primaryMode ? "recommended" : ""}">
+          <div class="advisor-plan-head">
+            <h3>${plan.label}</h3>
+            <span>${plan.mode === recommendation.primaryMode ? "AI 主推" : "备选"}</span>
+          </div>
+          <p>${plan.pitch}</p>
+          <div class="advisor-picks">${
+            planActions.length ? planActions.map((name) => `<span class="advisor-pick">${name}</span>`).join("") : `<span class="advisor-pick">不主动操作</span>`
+          }</div>
+          <div class="advisor-kpis">
+            <span class="advisor-kpi good">流水 ${money(plan.row.revenue)}</span>
+            <span class="advisor-kpi ${kpiClass(plan.row.reputation, state.reputation)}">口碑 ${Math.round(plan.row.reputation)}</span>
+            <span class="advisor-kpi ${kpiClass(plan.row.risk, state.risk, true)}">风险 ${Math.round(plan.row.risk)}</span>
+            <span class="advisor-kpi">${money(plan.cost)} / ${plan.ap} AP</span>
+          </div>
+          <button class="ghost-button advisor-plan-button" data-advisor-plan="${plan.mode}" ${!plan.actionIds.length || state.ended ? "disabled" : ""}>套用${plan.label}</button>
+        </div>`;
+    })
+    .join("");
   elements.advisorOutput.innerHTML = `
     <div class="advisor-card good">
       <h3>${message || `建议目标：${advisorGoalNames[recommendation.goal]}`}</h3>
       <p>${recommendation.summary}</p>
     </div>
+    <div class="advisor-plan-grid">${planCards}</div>
     <div class="advisor-card">
       <h3>推荐动作</h3>
       <div class="advisor-picks">${
@@ -1000,6 +1049,24 @@ function applyAdvisorRecommendation() {
   saveCurrentAccount();
   render();
   renderAdvisorRecommendation(lastAdvisorRecommendation, "已套用到本回合指令槽");
+}
+
+function applyAdvisorPlan(mode) {
+  if (!lastAdvisorRecommendation || state.ended) return;
+  const plan = lastAdvisorRecommendation.plans.find((item) => item.mode === mode);
+  if (!plan || !plan.actionIds.length) return;
+  lastAdvisorRecommendation = {
+    ...lastAdvisorRecommendation,
+    actionIds: plan.actionIds,
+    row: plan.row,
+    cost: plan.cost,
+    ap: plan.ap,
+    summary: getAdvisorSummary(lastAdvisorRecommendation.goal, plan.row, plan.actionIds),
+    reasons: plan.reasons,
+    warnings: plan.warnings,
+    primaryMode: plan.mode,
+  };
+  applyAdvisorRecommendation();
 }
 
 function getAdvisorTurnReview(report) {
@@ -1340,10 +1407,62 @@ function deltaText(after, before, formatter = (value) => Math.round(value).toLoc
   return `${formatter(after)} (${sign}${formatter(delta)})`;
 }
 
+function getTurnGrade(report) {
+  let score = 72;
+  if (report.after.lastRevenue >= Math.max(90000, report.before.lastRevenue * 1.15)) score += 12;
+  if (report.after.cash > report.before.cash) score += 8;
+  if (report.after.players > report.before.players) score += 8;
+  if (report.after.reputation > report.before.reputation) score += 8;
+  if (report.after.cheat < report.before.cheat) score += 7;
+  if (report.mission.completed) score += 10;
+  if (report.after.reputation < report.before.reputation - 5) score -= 14;
+  if (report.after.cash < 50000) score -= 12;
+  if (report.after.risk > report.before.risk + 5) score -= 10;
+  if (report.after.cheat > 65) score -= 8;
+  if (report.after.players < report.before.players - 500) score -= 10;
+  if (score >= 96) return ["S", "神来一手", "老板已经开始问能不能复制到二区。"];
+  if (score >= 84) return ["A", "稳中带赚", "这回合打得漂亮，数据和生态都能交代。"];
+  if (score >= 70) return ["B", "小赚可控", "没有崩盘，但还没打出让人记住的名场面。"];
+  if (score >= 55) return ["C", "埋了隐患", "短期能看，但下一回合需要立刻补漏洞。"];
+  return ["D", "运营事故", "玩家和老板至少有一边已经开始不满意。"];
+}
+
+function getPlayerReaction(report) {
+  const reputationDelta = report.after.reputation - report.before.reputation;
+  const revenueDelta = report.after.lastRevenue - report.before.lastRevenue;
+  if (report.after.cheat > 65) return "玩家群关键词：外挂、工作室、打金。散人开始怀疑这服还能不能玩。";
+  if (reputationDelta <= -6) return "社区风向转差：有人发避雷帖，评论区开始讨论是不是又在暗改。";
+  if (report.actions.includes("封挂专项")) return "世界频道刷屏叫好，但也有工作室小号在带节奏说误封。";
+  if (report.actions.includes("沙城争霸赛")) return "行会频道热度拉满，几个会长已经开始约下次攻沙。";
+  if (revenueDelta > 30000) return "大 R 充值很果断，散人还在观望这波活动会不会继续加码。";
+  if (report.after.players > report.before.players) return "新玩家进服速度变快，老玩家开始在群里回答新人问题。";
+  return "玩家情绪暂时平稳，群里主要在讨论爆率、物价和下一场活动。";
+}
+
+function getBossComment(report, grade) {
+  if (grade === "S") return "老板评价：这回合可以上周报，重点写 AI 参谋怎么帮我们少走弯路。";
+  if (grade === "A") return "老板评价：数据能看，风险也没炸，下回合继续保持节奏。";
+  if (grade === "B") return "老板评价：还行，但我想看到更明确的流水突破或生态修复。";
+  if (grade === "C") return "老板评价：别只看短期数字，口碑和风险再崩就要开会复盘。";
+  return "老板评价：这个服不能再靠运气了，下一回合给我一个救火方案。";
+}
+
+function getTurnNews(report) {
+  if (report.event) return `突发：${report.event.title}。${report.event.text}`;
+  if (report.actions.includes("主播攻沙夜")) return "短视频切片开始传播，评论区有人问新区入口，渠道投放素材多了一条可用名场面。";
+  if (report.actions.includes("限时充值返利")) return "充值榜突然换血，榜一和榜二互相抬价，但散人群开始担心后面返利更狠。";
+  if (report.actions.includes("封挂专项")) return "封禁公告发出后，材料价格短暂波动，交易行开始恢复正常报价。";
+  if (report.actions.includes("客服补偿包")) return "补偿邮件发出后，客服排队量下降，几个老玩家表示愿意再观察一晚。";
+  if (report.after.players < report.before.players - 450) return "服务器出现明显流失，竞品新区广告在玩家群里被频繁转发。";
+  return "本回合没有大新闻，但服务器生态正在悄悄累积下一次爆点。";
+}
+
 function showTurnReport(report) {
   elements.turnReportKicker.textContent = `R${report.turn} 回合结算`;
-  elements.turnReportTitle.textContent = report.mission.completed ? "挑战完成" : "回合结束";
+  const [grade, gradeTitle, gradeText] = getTurnGrade(report);
+  elements.turnReportTitle.textContent = `${grade} 级 · ${gradeTitle}`;
   elements.turnReportStats.innerHTML = [
+    ["运营评级", `${grade} · ${gradeTitle}`],
     ["本回合流水", money(report.after.lastRevenue)],
     ["现金变化", deltaText(report.after.cash, report.before.cash, money)],
     ["活跃玩家", deltaText(report.after.players, report.before.players)],
@@ -1352,13 +1471,16 @@ function showTurnReport(report) {
     .map(([label, value]) => `<div class="dialog-stat"><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
   elements.turnReportEvents.innerHTML = `
+    <div class="report-line spotlight"><strong>${gradeTitle}</strong><span>${gradeText}</span></div>
     <div class="report-line"><strong>执行指令</strong><span>${report.actions.length ? report.actions.join("、") : "无主动操作"}</span></div>
+    <div class="report-line"><strong>服务器新闻</strong><span>${getTurnNews(report)}</span></div>
+    <div class="report-line"><strong>玩家社区</strong><span>${getPlayerReaction(report)}</span></div>
+    <div class="report-line"><strong>老板评价</strong><span>${getBossComment(report, grade)}</span></div>
     <div class="report-line"><strong>玩家流动</strong><span>新增 ${report.acquisition.toLocaleString("zh-CN")}，流失 ${report.churned.toLocaleString("zh-CN")}</span></div>
     <div class="report-line good"><strong>AI 复盘</strong><span>${getAdvisorTurnReview(report)}</span></div>
     <div class="report-line ${report.mission.completed ? "good" : "bad"}"><strong>${report.mission.title}</strong><span>${
       report.mission.completed ? `完成，${report.mission.reward}` : "未完成，未获得挑战奖励"
-    }</span></div>
-    ${report.event ? `<div class="report-line"><strong>${report.event.title}</strong><span>${report.event.text}</span></div>` : ""}`;
+    }</span></div>`;
   if (typeof elements.turnReportDialog.showModal === "function") {
     elements.turnReportDialog.showModal();
   } else {
@@ -1497,11 +1619,35 @@ function checkResult() {
   return null;
 }
 
+function getSeasonTitle() {
+  if (state.totalRevenue >= TARGET_REVENUE && state.reputation >= 50 && state.risk < 70) return ["沙城金牌操盘手", "流水达标，生态没崩，这种服老板最想复制。"];
+  if (state.totalRevenue >= TARGET_REVENUE && state.reputation < 35) return ["氪金收割机", "流水冲上去了，但玩家社区已经把你做成表情包。"];
+  if (state.cheat < 30 && state.reputation >= 45) return ["封挂铁腕运营", "你把工作室打疼了，也把散人的信任拉了回来。"];
+  if (state.players < 1200 && state.day > 8) return ["鬼服急救医生", "服务器还吊着一口气，靠的是你每回合救火。"];
+  if (state.risk >= 85) return ["刀尖上跳舞的人", "每次都差点爆雷，但你确实把局面撑到了最后。"];
+  if (state.reputation >= 60) return ["散人守护者", "不一定最赚钱，但玩家愿意留下来骂着继续玩。"];
+  return ["首服值班经理", "没有神话，也没有彻底翻车，这是最真实的运营日常。"];
+}
+
+function getSeasonReportText(resultTitle) {
+  const [seasonTitle, titleText] = getSeasonTitle();
+  const revenueProgress = Math.round((state.totalRevenue / TARGET_REVENUE) * 100);
+  const pressure = state.cash < 0 ? "现金流承压" : state.risk > 75 ? "风险偏高" : state.reputation < 35 ? "口碑偏弱" : "生态尚可";
+  return {
+    seasonTitle,
+    titleText,
+    boss: `老板总结：${resultTitle === "赛季成功" ? "这服能继续加预算，复盘里重点写 AI 推荐和关键动作。" : "结果不算完美，但这套 AI 沙盘能帮助我们提前看到坑。"}`,
+    data: `赛季流水完成度 ${revenueProgress}%，最终状态为${pressure}。`,
+  };
+}
+
 function showResult([title, text]) {
+  const seasonReport = getSeasonReportText(title);
   elements.resultKicker.textContent = `R${state.day} 赛季结算`;
-  elements.resultTitle.textContent = title;
-  elements.resultText.textContent = text;
+  elements.resultTitle.textContent = `${title} · ${seasonReport.seasonTitle}`;
+  elements.resultText.innerHTML = `${text}<br><strong>${seasonReport.titleText}</strong><br>${seasonReport.boss}<br>${seasonReport.data}`;
   elements.resultStats.innerHTML = [
+    ["运营称号", seasonReport.seasonTitle],
     ["累计流水", money(state.totalRevenue)],
     ["剩余现金", money(state.cash)],
     ["活跃玩家", Math.round(state.players).toLocaleString("zh-CN")],
@@ -1574,6 +1720,12 @@ elements.actions.addEventListener("click", (event) => {
   const card = event.target.closest(".action-card");
   if (!card) return;
   toggleAction(card.dataset.action);
+});
+
+elements.advisorOutput.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-advisor-plan]");
+  if (!button) return;
+  applyAdvisorPlan(button.dataset.advisorPlan);
 });
 
 elements.nextDayButton.addEventListener("click", () => simulateDay());
