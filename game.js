@@ -1,4 +1,4 @@
-const MAX_DAY = 12;
+const MAX_DAY = 7;
 const STORAGE_KEY = "legendCardOps.accounts.v1";
 const LEGACY_STORAGE_KEY = "legendCardOps.v1";
 const ACTIVE_ACCOUNT_KEY = "legendCardOps.activeAccount.v1";
@@ -11,6 +11,13 @@ const money = (value) => {
   const sign = rounded < 0 ? "-" : "";
   if (abs >= 10000) return `${sign}${(abs / 10000).toFixed(abs >= 100000 ? 0 : 1)}万`;
   return `${sign}${abs.toLocaleString("zh-CN")}`;
+};
+
+const rarityConfig = {
+  red: { label: "红色负面", tone: "谨慎 · 后期投放", className: "red" },
+  green: { label: "绿色小赚", tone: "稳健回血", className: "green" },
+  purple: { label: "紫色中赚", tone: "节奏起飞", className: "purple" },
+  gold: { label: "金色大赚", tone: "爆款庆祝", className: "gold" },
 };
 
 const serverTypes = [
@@ -210,6 +217,9 @@ const eventCards = [
   {
     id: "hotDramaAds",
     type: "good",
+    rarity: "gold",
+    cardPool: "random",
+    culture: "社会事件 · 热点买量",
     title: "热播剧买量窗口",
     text: "最近有热播剧，买量经理已提前锁定该剧进行买量。今日信息流买量收益翻倍。",
     weight: 10,
@@ -220,6 +230,9 @@ const eventCards = [
   {
     id: "customerScandal",
     type: "bad",
+    rarity: "red",
+    cardPool: "random",
+    culture: "社会事件 · 公关危机",
     title: "客服沙龙翻车",
     text: "榜一大哥在客服沙龙中带女客服离场后被扫黄，本次客服活动被迫中止，若继续办沙龙将额外亏损 50 万。",
     weight: 7,
@@ -230,8 +243,24 @@ const eventCards = [
     blockedText: "客服沙龙被迫中止，场地、赔偿和公关额外亏损 50 万。",
   },
   {
+    id: "platformFeature",
+    type: "good",
+    rarity: "gold",
+    cardPool: "random",
+    culture: "玩家涌现 · 平台扶持",
+    title: "平台首页推荐",
+    text: "平台运营看到你的服数据抬头，临时给了首页推荐位。今天直播、买量和跨服活动都能吃到爆量红利。",
+    weight: 5,
+    effects: { activeDelta: 1600, heatDelta: 18, reputationDelta: 3 },
+    activityMultiplier: { ads: 1.8, live: 1.75, guild: 1.45, cosmetic: 1.25 },
+    note: "平台推荐会把新增、热度和付费一起推高，是典型金色大赚窗口。",
+  },
+  {
     id: "guildViral",
     type: "good",
+    rarity: "purple",
+    cardPool: "random",
+    culture: "玩家涌现 · 行会自传播",
     title: "帮战名场面预热",
     text: "两个大帮会在短视频平台互喷约战，今天如果开跨服帮战，热度和流水都会大幅提升。",
     weight: 9,
@@ -242,6 +271,9 @@ const eventCards = [
   {
     id: "anchorBreach",
     type: "bad",
+    rarity: "red",
+    cardPool: "random",
+    culture: "投放事故 · 达人违约",
     title: "主播临时跳票",
     text: "约好的主播被竞品挖走，直播攻沙夜如果照常办，曝光缩水且需要临时补坑。",
     weight: 8,
@@ -253,6 +285,9 @@ const eventCards = [
   {
     id: "bossCharge",
     type: "good",
+    rarity: "purple",
+    cardPool: "fixed",
+    culture: "付费生态 · 大 R 回流",
     title: "榜一回归",
     text: "消失三天的榜一突然回归，说今晚要把榜二打服。充值返利和外观上架收益提高。",
     weight: 8,
@@ -262,6 +297,9 @@ const eventCards = [
   {
     id: "paymentCrash",
     type: "bad",
+    rarity: "red",
+    cardPool: "random",
+    culture: "基础设施 · 支付事故",
     title: "支付通道抽风",
     text: "晚高峰支付回调延迟，玩家充值不到账截图刷屏。今日总流水打折，客服压力上升。",
     weight: 8,
@@ -271,6 +309,9 @@ const eventCards = [
   {
     id: "platformCrackdown",
     type: "bad",
+    rarity: "red",
+    cardPool: "fixed",
+    culture: "合规风险 · 平台整改",
     title: "平台提示整改",
     text: "返利广告被平台提示整改，今日继续强推充值返利会被限流。",
     weight: 7,
@@ -281,6 +322,9 @@ const eventCards = [
   {
     id: "antiCheatPraise",
     type: "good",
+    rarity: "green",
+    cardPool: "random",
+    culture: "口碑治理 · 反外挂",
     title: "散人联名求封挂",
     text: "散人玩家联名发帖要求清脚本，今天封挂扫荡会获得额外口碑收益。",
     weight: 9,
@@ -291,6 +335,9 @@ const eventCards = [
   {
     id: "competitorOpen",
     type: "bad",
+    rarity: "red",
+    cardPool: "random",
+    culture: "竞品压力 · 市场抢量",
     title: "竞品新区开门",
     text: "竞品突然开新区并打出高返利广告，今日自然流失增加，买量成本变贵。",
     weight: 8,
@@ -300,6 +347,9 @@ const eventCards = [
   {
     id: "cosmeticTrend",
     type: "good",
+    rarity: "purple",
+    cardPool: "random",
+    culture: "内容出圈 · 外观消费",
     title: "坐骑皮肤出圈",
     text: "玩家自发剪了坐骑变装视频，今天上架外观坐骑会获得额外流水和口碑。",
     weight: 9,
@@ -310,6 +360,9 @@ const eventCards = [
   {
     id: "regulatorRumor",
     type: "chaos",
+    rarity: "green",
+    cardPool: "fixed",
+    culture: "行业风向 · 风险博弈",
     title: "监管传闻",
     text: "行业群流出一份监管传闻，真假未知。今天激进活动有风险，但保守运营会错过热度。",
     weight: 6,
@@ -320,6 +373,9 @@ const eventCards = [
   {
     id: "quietDay",
     type: "neutral",
+    rarity: "green",
+    cardPool: "random",
+    culture: "口碑沉淀 · 稳态经营",
     title: "难得平静的一天",
     text: "玩家没有大规模开喷，竞品也没有动作。今天是按自己节奏经营的窗口。",
     weight: 10,
@@ -338,6 +394,11 @@ const elements = {
   revenueMetric: document.querySelector("#revenueMetric"),
   totalRevenueMetric: document.querySelector("#totalRevenueMetric"),
   targetProgressMetric: document.querySelector("#targetProgressMetric"),
+  goalTitle: document.querySelector("#goalTitle"),
+  goalPercent: document.querySelector("#goalPercent"),
+  goalProgressBar: document.querySelector("#goalProgressBar"),
+  goalProgressText: document.querySelector("#goalProgressText"),
+  goalPaceText: document.querySelector("#goalPaceText"),
   playerMetric: document.querySelector("#playerMetric"),
   riskMetric: document.querySelector("#riskMetric"),
   serverCards: document.querySelector("#serverCards"),
@@ -361,6 +422,7 @@ const elements = {
   resultText: document.querySelector("#resultText"),
   resultStats: document.querySelector("#resultStats"),
   dialogResetButton: document.querySelector("#dialogResetButton"),
+  celebrationLayer: document.querySelector("#celebrationLayer"),
   stagePanels: document.querySelectorAll("[data-stage]"),
   steps: {
     account: document.querySelector("#stepAccount"),
@@ -388,6 +450,8 @@ function freshState() {
     selectedActivityId: null,
     lastReport: null,
     reportSeen: true,
+    eventHistory: [],
+    lastDrawReason: null,
     log: [],
     over: false,
   };
@@ -486,8 +550,99 @@ function weightedPick(items) {
   return items[items.length - 1];
 }
 
+function getTargetProgress() {
+  const server = getServer();
+  if (!server) return 0;
+  return clamp(state.totalRevenue / server.targetRevenue, 0, 1.25);
+}
+
+function getExpectedProgress() {
+  return clamp((state.day - 1) / MAX_DAY, 0, 1);
+}
+
+function getForcedRarity() {
+  const progress = getTargetProgress();
+  const expected = getExpectedProgress();
+  if (state.day === MAX_DAY && progress < 1) return { rarity: "gold", reason: "第七天保底：最后冲刺必出金色大赚卡。" };
+  if (progress < expected - 0.18) return { rarity: "gold", reason: "进度滞后补偿：系统给你一次金色翻盘机会。" };
+  if (progress > expected + 0.32 && state.day > 2) return { rarity: "red", reason: "进度超前惩罚：项目太顺，风险开始找上门。" };
+  return null;
+}
+
+function getFixedCardTrigger(recentIds) {
+  const progress = getTargetProgress();
+  const expected = getExpectedProgress();
+  const fixedRules = [
+    {
+      id: "platformCrackdown",
+      when: () => state.risk >= 68,
+      reason: "固定卡触发：风险值过高，平台整改压力必然出现。",
+    },
+    {
+      id: "bossCharge",
+      when: () => getServer()?.id === "whale" && state.day >= 3 && progress < expected,
+      reason: "固定卡触发：土豪服进度落后，榜一回归带来付费变量。",
+    },
+    {
+      id: "regulatorRumor",
+      when: () => state.day === 4 && progress >= expected - 0.05,
+      reason: "固定卡触发：中盘节点出现行业风向，考验你是否激进。",
+    },
+  ];
+  const rule = fixedRules.find((item) => item.when() && !recentIds.has(item.id));
+  if (!rule) return null;
+  const event = eventCards.find((card) => card.id === rule.id);
+  return event ? { event, reason: rule.reason } : null;
+}
+
+function pickEventCard() {
+  const forced = getForcedRarity();
+  const recentIds = new Set((state.eventHistory || []).slice(-3));
+  let pool = eventCards.filter((event) => !recentIds.has(event.id));
+  if (!pool.length) pool = eventCards;
+  if (forced) {
+    const forcedPool = pool.filter((event) => event.rarity === forced.rarity);
+    const fallbackForcedPool = eventCards.filter((event) => event.rarity === forced.rarity);
+    return { event: weightedPick(forcedPool.length ? forcedPool : fallbackForcedPool.length ? fallbackForcedPool : pool), reason: forced.reason };
+  }
+  const fixed = getFixedCardTrigger(recentIds);
+  if (fixed) return fixed;
+  const randomPool = pool.filter((event) => event.cardPool !== "fixed");
+  const event = weightedPick(randomPool.length ? randomPool : pool);
+  return { event, reason: "常规随机：从运营卡池中抽取，近 3 日出现过的卡不会重复。" };
+}
+
 function randomBetween(min, max) {
   return min + Math.random() * (max - min);
+}
+
+function celebrateGoldCard() {
+  if (elements.celebrationLayer) {
+    elements.celebrationLayer.innerHTML = Array.from({ length: 22 }, (_, index) => `<i style="--x:${Math.random() * 100}%;--d:${Math.random() * 0.5 + index * 0.018}s"></i>`).join("");
+    elements.celebrationLayer.classList.add("show");
+    window.setTimeout(() => elements.celebrationLayer.classList.remove("show"), 1400);
+  }
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audio = new AudioContext();
+    [523.25, 659.25, 783.99, 1046.5].forEach((frequency, index) => {
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.frequency.value = frequency;
+      oscillator.type = "triangle";
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      const start = audio.currentTime + index * 0.08;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+      oscillator.start(start);
+      oscillator.stop(start + 0.24);
+    });
+    window.setTimeout(() => audio.close(), 900);
+  } catch (error) {
+  }
 }
 
 function snapshot() {
@@ -527,13 +682,17 @@ function startServer(serverId) {
 
 function drawEvent() {
   if (!state.serverId || state.currentEventId || state.over) return;
-  const event = weightedPick(eventCards);
+  const draw = pickEventCard();
+  const event = draw.event;
   state.currentEventId = event.id;
   state.selectedActivityId = null;
   state.lastReport = null;
   state.reportSeen = true;
+  state.lastDrawReason = draw.reason;
+  state.eventHistory = [...(state.eventHistory || []), event.id].slice(-6);
   saveState();
   render();
+  if (event.rarity === "gold") celebrateGoldCard();
   scrollToStage("draw");
 }
 
@@ -560,9 +719,9 @@ function applyActivityEventEffects(activity, event) {
 function buildReportNotes(event, activity, activityMultiplier, activityCostDelta, blocked) {
   const notes = [];
   if (event.note) notes.push(event.note);
-  if (activityMultiplier > 1.05) notes.push(`${activity.name}吃到事件红利，收益提高 ${Math.round((activityMultiplier - 1) * 100)}%。`);
-  if (activityMultiplier < 0.95) notes.push(`${activity.name}被事件压制，收益只剩 ${Math.round(activityMultiplier * 100)}%。`);
-  if (activityCostDelta > 0) notes.push(`事件导致额外支出 ${money(activityCostDelta)}。`);
+  if (activityMultiplier > 1.05) notes.push(`${activity.name}吃到运营卡红利，收益提高 ${Math.round((activityMultiplier - 1) * 100)}%。`);
+  if (activityMultiplier < 0.95) notes.push(`${activity.name}被卡面风险压制，收益只剩 ${Math.round(activityMultiplier * 100)}%。`);
+  if (activityCostDelta > 0) notes.push(`卡面风险导致额外支出 ${money(activityCostDelta)}。`);
   if (blocked && event.blockedText) notes.push(event.blockedText);
   if (!notes.length) notes.push("今天没有额外修正，主要看服务器底子和活动本身的效率。");
   return notes;
@@ -587,10 +746,12 @@ function getBossFeedback(report) {
 }
 
 function getEventClass(type) {
-  if (type === "good") return "good";
-  if (type === "bad") return "bad";
-  if (type === "chaos") return "chaos";
-  return "neutral";
+  const event = typeof type === "object" ? type : null;
+  if (event?.rarity) return event.rarity;
+  if (type === "good") return "green";
+  if (type === "bad") return "red";
+  if (type === "chaos") return "purple";
+  return "green";
 }
 
 function settleDay() {
@@ -688,11 +849,12 @@ function getSeasonResult() {
   if (state.cash < -800000) return { title: "资金链断裂", text: "渠道款、活动成本和客服赔偿一起压上来，项目组被迫暂停运营。", tone: "bad" };
   if (state.reputation <= 5) return { title: "全服骂退", text: "玩家社区形成共识：这服不能碰，新增再多也接不住。", tone: "bad" };
   if (state.risk >= 100) return { title: "被迫整改", text: "广告、返利、舆情和投诉叠满，平台要求停投整改。", tone: "bad" };
-  if (state.day < MAX_DAY) return null;
   if (state.totalRevenue >= server.targetRevenue && state.cash > -300000 && state.reputation >= 25 && state.risk < 95) {
-    return { title: "赛季达标", text: "你把这组服务器撑到了目标线，老板已经开始问下一组服什么时候开。", tone: "good" };
+    const fast = state.day <= 3 ? "运气爆棚，3 天内就完成了老板的 7 天流水目标。" : "你把这组服务器撑到了 7 天目标线。";
+    return { title: "提前达标", text: `${fast} 项目组已经开始讨论下一组服怎么复制。`, tone: "good" };
   }
-  return { title: "赛季未达标", text: "服务器活到了最后一天，但流水、现金或玩家口碑没有达到老板预期。", tone: "normal" };
+  if (state.day < MAX_DAY) return null;
+  return { title: "项目卒", text: "7 天冲刺结束，目标流水没完成。老板把复盘会命名为“为什么又差一点”。", tone: "bad" };
 }
 
 function getOperatorTitle() {
@@ -711,7 +873,7 @@ function resetGame() {
   saveState();
   if (elements.resultDialog.open && typeof elements.resultDialog.close === "function") elements.resultDialog.close();
   render();
-  scrollToStage("server");
+  scrollToStage(getVisibleStage());
 }
 
 function chooseServerAgain() {
@@ -775,8 +937,10 @@ function renderStagePanels() {
 
 function renderMetrics() {
   const server = getServer();
+  const progress = server ? getTargetProgress() : 0;
+  const progressPercent = Math.min(100, Math.round(progress * 100));
   elements.accountInput.value = activeAccount;
-  elements.targetMetric.textContent = server ? `目标 ${money(server.targetRevenue)} 流水` : "先选择服务器";
+  elements.targetMetric.textContent = server ? `7 天目标 ${money(server.targetRevenue)} 流水` : "先选择服务器";
   elements.serverFlavor.textContent = server ? server.desc : "不同服务器决定玩家结构、付费强度和风险底色。";
   elements.dayMetric.textContent = server ? `D${Math.min(state.day, MAX_DAY)}/${MAX_DAY}` : "未开服";
   elements.serverMetric.textContent = server ? `${server.name} · ${server.tag}` : "未开服";
@@ -784,7 +948,7 @@ function renderMetrics() {
   elements.netMetric.textContent = server ? money(state.yesterdayNet) : "-";
   elements.revenueMetric.textContent = server ? `流水 ${money(state.todayRevenue)} · 支出 ${money(state.todayExpense)}` : "流水 / 支出 -";
   elements.totalRevenueMetric.textContent = server ? `累计流水 ${money(state.totalRevenue)}` : "累计流水 -";
-  elements.targetProgressMetric.textContent = server ? `目标进度 ${Math.round((state.totalRevenue / server.targetRevenue) * 100)}%` : "目标进度 -";
+  elements.targetProgressMetric.textContent = server ? `目标进度 ${progressPercent}%` : "目标进度 -";
   elements.playerMetric.textContent = server ? `${Math.round(state.active).toLocaleString("zh-CN")} / ${Math.round(state.reputation)}` : "-";
   elements.riskMetric.textContent = server ? `风险 ${Math.round(state.risk)} · 热度 ${Math.round(state.heat)}` : "风险 -";
   if (!server) {
@@ -796,8 +960,19 @@ function renderMetrics() {
   } else if (state.lastReport) {
     elements.topReportTitle.textContent = `${state.lastReport.net >= 0 ? "昨日净赚" : "昨日净亏"} ${money(Math.abs(state.lastReport.net))} · ${state.lastReport.eventTitle}`;
   } else {
-    elements.topReportTitle.textContent = `${server.name} D${state.day}：先抽今日事件卡`;
+    elements.topReportTitle.textContent = `${server.name} D${state.day}：先抽运营卡`;
   }
+  elements.goalTitle.textContent = server ? `${server.name} 7 天目标：${money(server.targetRevenue)}` : "确认账号并选服后生成目标";
+  elements.goalPercent.textContent = `${progressPercent}%`;
+  elements.goalProgressBar.style.width = `${progressPercent}%`;
+  elements.goalProgressText.textContent = server ? `累计流水 ${money(state.totalRevenue)} / 目标 ${money(server.targetRevenue)}` : "累计流水 - / 目标 -";
+  elements.goalPaceText.textContent = server
+    ? progress >= 1
+      ? "目标已达成，项目起飞"
+      : state.day >= MAX_DAY
+        ? "最后一天未达标将项目卒"
+        : `剩余 ${Math.max(0, MAX_DAY - state.day + 1)} 天，落后时可能触发金卡补偿`
+    : "7 天内达标，否则项目卒";
   document.querySelector(".top-board").classList.toggle("settled", Boolean(state.lastReport));
 }
 
@@ -856,11 +1031,17 @@ function renderEventCard() {
   }
   if (!event) {
     elements.eventCard.className = "event-card empty-card";
-    elements.eventCard.innerHTML = `<span>未抽卡</span><strong>点击“抽今日事件”</strong><p>抽到好卡就顺势放大收益，抽到坏卡就想办法止损。抽完卡后才会开放今日运营活动。</p>`;
+    elements.eventCard.innerHTML = `<span>未抽卡</span><strong>点击“立刻抽取运营卡”</strong><p>先判定是否触发必出条件，再从运营卡池随机。抽完卡后才会开放今日运营活动。</p>`;
     return;
   }
-  elements.eventCard.className = `event-card ${getEventClass(event.type)}`;
-  elements.eventCard.innerHTML = `<span>${event.type === "good" ? "正面事件" : event.type === "bad" ? "负面事件" : event.type === "chaos" ? "混沌事件" : "普通事件"}</span><strong>${event.title}</strong><p>${event.text}</p><small>卡面事件已生效，请根据这张卡选择今日运营活动。</small>`;
+  const rarity = rarityConfig[event.rarity] || rarityConfig.green;
+  elements.eventCard.className = `event-card ${getEventClass(event)}`;
+  elements.eventCard.innerHTML = `
+    <span>${rarity.label} · ${event.cardPool === "fixed" ? "固定卡" : "随机卡"}</span>
+    <strong>${event.title}</strong>
+    <em>${event.culture} · ${rarity.tone}</em>
+    <p>${event.text}</p>
+    <small>${state.lastDrawReason || "运营卡已生效，请根据卡面选择活动。"}</small>`;
 }
 
 function renderActivities() {
@@ -890,7 +1071,7 @@ function renderActivities() {
 function renderReport() {
   const report = state.lastReport;
   if (!report) {
-    elements.dailyReport.innerHTML = `<div class="empty-state">抽取事件并选择运营活动后，会在这里生成当日流水、支出、净收益和反馈。</div>`;
+    elements.dailyReport.innerHTML = `<div class="empty-state">抽取运营卡并选择运营活动后，会在这里生成当日流水、支出、净收益和反馈。</div>`;
     return;
   }
   elements.dailyReport.innerHTML = `
@@ -904,7 +1085,7 @@ function renderReport() {
       <div><span>当日支出</span><strong>${money(report.expense)}</strong></div>
       <div><span>活动成本</span><strong>${money(report.activityCost)}</strong></div>
       <div><span>运营成本</span><strong>${money(report.opsCost)}</strong></div>
-      <div><span>事件成本</span><strong>${money(report.eventCost)}</strong></div>
+      <div><span>卡面成本</span><strong>${money(report.eventCost)}</strong></div>
       <div><span>流失玩家</span><strong>${report.churn.toLocaleString("zh-CN")}</strong></div>
     </div>
     <div class="report-lines">
