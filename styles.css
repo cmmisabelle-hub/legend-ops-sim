@@ -317,6 +317,49 @@ h2 {
   letter-spacing: -0.06em;
 }
 
+.account-bar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.account-field {
+  display: grid;
+  gap: 6px;
+}
+
+.account-field span,
+.section-tip {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.account-field input {
+  min-height: 46px;
+  width: 100%;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 850;
+  background: rgba(0, 0, 0, 0.18);
+  outline: none;
+}
+
+.account-field input:focus {
+  border-color: rgba(255, 209, 102, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.12);
+}
+
+.danger-button {
+  color: #ffd3d3;
+}
+
 .server-panel,
 .draw-panel,
 .activity-panel,
@@ -774,6 +817,7 @@ h2 {
 
   .steps,
   .top-stats,
+  .account-bar,
   .server-cards,
   .activity-cards,
   .report-grid,

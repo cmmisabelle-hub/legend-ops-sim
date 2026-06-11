@@ -64,6 +64,15 @@
             <small id="riskMetric">风险 -</small>
           </article>
         </div>
+        <div class="account-bar" aria-label="账号与赛季控制">
+          <label class="account-field">
+            <span>当前账号</span>
+            <input id="accountInput" type="text" maxlength="18" autocomplete="off" />
+          </label>
+          <button id="switchAccountButton" class="ghost-button">切换账号</button>
+          <button id="chooseServerButton" class="ghost-button">重选服务器</button>
+          <button id="resetButton" class="ghost-button danger-button">重开本账号</button>
+        </div>
       </section>
 
       <section class="server-panel panel stage-panel" data-stage="server">
@@ -72,7 +81,7 @@
             <p class="eyebrow">开服前选择</p>
             <h2>选择服务器</h2>
           </div>
-          <button id="resetButton" class="ghost-button">重开一季</button>
+          <span class="section-tip">每个账号都有独立进度，选服后进入今日抽卡。</span>
         </div>
         <div id="serverCards" class="server-cards"></div>
       </section>

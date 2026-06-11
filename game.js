@@ -1,5 +1,8 @@
 const MAX_DAY = 12;
-const STORAGE_KEY = "legendCardOps.v1";
+const STORAGE_KEY = "legendCardOps.accounts.v1";
+const LEGACY_STORAGE_KEY = "legendCardOps.v1";
+const ACTIVE_ACCOUNT_KEY = "legendCardOps.activeAccount.v1";
+const DEFAULT_ACCOUNT = "游客账号";
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const money = (value) => {
@@ -343,6 +346,9 @@ const elements = {
   activityCards: document.querySelector("#activityCards"),
   settleButton: document.querySelector("#settleButton"),
   continueButton: document.querySelector("#continueButton"),
+  accountInput: document.querySelector("#accountInput"),
+  switchAccountButton: document.querySelector("#switchAccountButton"),
+  chooseServerButton: document.querySelector("#chooseServerButton"),
   dailyReport: document.querySelector("#dailyReport"),
   logList: document.querySelector("#logList"),
   resetButton: document.querySelector("#resetButton"),
@@ -384,18 +390,65 @@ function freshState() {
 }
 
 function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return saved && typeof saved === "object" ? { ...freshState(), ...saved } : freshState();
-  } catch (error) {
-    return freshState();
-  }
+  return loadAccountState(activeAccount);
 }
 
+function cleanAccountName(value) {
+  return (value || "").trim().replace(/\s+/g, " ").slice(0, 18) || DEFAULT_ACCOUNT;
+}
+
+function loadAccounts() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && typeof saved === "object") return saved;
+  } catch (error) {
+  }
+  const accounts = {};
+  try {
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+    if (legacy && typeof legacy === "object") {
+      accounts[DEFAULT_ACCOUNT] = { ...freshState(), ...legacy };
+      saveAccounts(accounts);
+      saveActiveAccount(DEFAULT_ACCOUNT);
+    }
+  } catch (error) {
+  }
+  return accounts;
+}
+
+function saveAccounts(accounts) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+}
+
+function loadActiveAccount() {
+  return cleanAccountName(localStorage.getItem(ACTIVE_ACCOUNT_KEY) || DEFAULT_ACCOUNT);
+}
+
+function saveActiveAccount(accountName) {
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, cleanAccountName(accountName));
+}
+
+function loadAccountState(accountName) {
+  const accounts = loadAccounts();
+  return accounts[accountName] ? { ...freshState(), ...accounts[accountName] } : freshState();
+}
+
+let activeAccount = loadActiveAccount();
 let state = loadState();
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const accounts = loadAccounts();
+  accounts[activeAccount] = state;
+  saveAccounts(accounts);
+  saveActiveAccount(activeAccount);
+}
+
+function switchAccount(accountName) {
+  activeAccount = cleanAccountName(accountName);
+  state = loadAccountState(activeAccount);
+  saveActiveAccount(activeAccount);
+  render();
+  scrollToStage(getVisibleStage());
 }
 
 function scrollToStage(stage) {
@@ -648,9 +701,26 @@ function getOperatorTitle() {
 
 function resetGame() {
   state = freshState();
-  localStorage.removeItem(STORAGE_KEY);
+  saveState();
   if (elements.resultDialog.open && typeof elements.resultDialog.close === "function") elements.resultDialog.close();
   render();
+  scrollToStage("server");
+}
+
+function chooseServerAgain() {
+  if (state.serverId) {
+    const confirmed = window.confirm("重选服务器会清空当前账号本季进度，确定继续吗？");
+    if (!confirmed) return;
+  }
+  resetGame();
+}
+
+function confirmResetGame() {
+  if (state.serverId) {
+    const confirmed = window.confirm("重开本账号会清空当前账号本季进度，确定继续吗？");
+    if (!confirmed) return;
+  }
+  resetGame();
 }
 
 function renderSteps() {
@@ -692,6 +762,7 @@ function renderStagePanels() {
 
 function renderMetrics() {
   const server = getServer();
+  elements.accountInput.value = activeAccount;
   elements.targetMetric.textContent = server ? `目标 ${money(server.targetRevenue)} 流水` : "先选择服务器";
   elements.serverFlavor.textContent = server ? server.desc : "不同服务器决定玩家结构、付费强度和风险底色。";
   elements.dayMetric.textContent = server ? `D${Math.min(state.day, MAX_DAY)}/${MAX_DAY}` : "未开服";
@@ -862,7 +933,12 @@ elements.continueButton.addEventListener("click", () => {
   render();
   scrollToStage("draw");
 });
-elements.resetButton.addEventListener("click", resetGame);
+elements.switchAccountButton.addEventListener("click", () => switchAccount(elements.accountInput.value));
+elements.accountInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") switchAccount(elements.accountInput.value);
+});
+elements.chooseServerButton.addEventListener("click", chooseServerAgain);
+elements.resetButton.addEventListener("click", confirmResetGame);
 elements.dialogResetButton.addEventListener("click", resetGame);
 
 render();
