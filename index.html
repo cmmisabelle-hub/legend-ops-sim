@@ -14,10 +14,11 @@
           <h1>做了个传奇</h1>
           <p class="subtitle">先选服务器，再抽今日事件卡。事件有好有坏，可能让买量翻倍，也可能让客服活动亏 50 万。你要根据当天局势选择运营活动，结算当日流水、支出和口碑风险。</p>
           <div class="rules" aria-label="基础循环">
-            <span>1 选服</span>
-            <span>2 抽事件</span>
-            <span>3 做运营</span>
-            <span>4 结流水</span>
+            <span>1 账号</span>
+            <span>2 选服</span>
+            <span>3 抽事件</span>
+            <span>4 做运营</span>
+            <span>5 结流水</span>
           </div>
         </div>
         <div class="season-card">
@@ -28,6 +29,7 @@
       </section>
 
       <section class="steps panel" aria-label="游戏流程">
+        <div class="step" id="stepAccount">确认账号</div>
         <div class="step" id="stepServer">选择服务器</div>
         <div class="step" id="stepDraw">抽今日事件</div>
         <div class="step" id="stepOperate">选择运营活动</div>
@@ -35,6 +37,15 @@
       </section>
 
       <section class="top-board panel">
+        <div class="account-bar" aria-label="账号与赛季控制">
+          <label class="account-field">
+            <span>当前账号</span>
+            <input id="accountInput" type="text" maxlength="18" autocomplete="off" />
+          </label>
+          <button id="switchAccountButton" class="ghost-button">确认/切换账号</button>
+          <button id="chooseServerButton" class="ghost-button">重选服务器</button>
+          <button id="resetButton" class="ghost-button danger-button">重开本账号</button>
+        </div>
         <div class="top-board-head">
           <div>
             <p class="eyebrow">昨日战报</p>
@@ -64,14 +75,29 @@
             <small id="riskMetric">风险 -</small>
           </article>
         </div>
-        <div class="account-bar" aria-label="账号与赛季控制">
-          <label class="account-field">
-            <span>当前账号</span>
-            <input id="accountInput" type="text" maxlength="18" autocomplete="off" />
-          </label>
-          <button id="switchAccountButton" class="ghost-button">切换账号</button>
-          <button id="chooseServerButton" class="ghost-button">重选服务器</button>
-          <button id="resetButton" class="ghost-button danger-button">重开本账号</button>
+        <section class="leaderboard" aria-label="账号流水排行榜">
+          <div class="leaderboard-head">
+            <div>
+              <p class="eyebrow">跨账号榜单</p>
+              <h2>账号流水排行榜</h2>
+            </div>
+            <span id="leaderboardCount">0 个账号</span>
+          </div>
+          <ol id="leaderboardList" class="leaderboard-list"></ol>
+        </section>
+      </section>
+
+      <section class="account-panel panel stage-panel" data-stage="account">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">第一步</p>
+            <h2>先确认当前账号</h2>
+          </div>
+          <button id="confirmAccountButton" class="primary-button">确认账号，开始运营</button>
+        </div>
+        <div class="account-brief">
+          <strong>账号之间进度、现金、流水和服务器选择完全独立。</strong>
+          <p>在上方输入账号名，例如“老板号”“测试号 A”，点击确认后再选择服务器。排行榜会按所有账号的累计流水自动排序。</p>
         </div>
       </section>
 

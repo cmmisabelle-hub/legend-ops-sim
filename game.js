@@ -348,7 +348,10 @@ const elements = {
   continueButton: document.querySelector("#continueButton"),
   accountInput: document.querySelector("#accountInput"),
   switchAccountButton: document.querySelector("#switchAccountButton"),
+  confirmAccountButton: document.querySelector("#confirmAccountButton"),
   chooseServerButton: document.querySelector("#chooseServerButton"),
+  leaderboardCount: document.querySelector("#leaderboardCount"),
+  leaderboardList: document.querySelector("#leaderboardList"),
   dailyReport: document.querySelector("#dailyReport"),
   logList: document.querySelector("#logList"),
   resetButton: document.querySelector("#resetButton"),
@@ -360,6 +363,7 @@ const elements = {
   dialogResetButton: document.querySelector("#dialogResetButton"),
   stagePanels: document.querySelectorAll("[data-stage]"),
   steps: {
+    account: document.querySelector("#stepAccount"),
     server: document.querySelector("#stepServer"),
     draw: document.querySelector("#stepDraw"),
     operate: document.querySelector("#stepOperate"),
@@ -435,6 +439,7 @@ function loadAccountState(accountName) {
 
 let activeAccount = loadActiveAccount();
 let state = loadState();
+let accountConfirmed = false;
 
 function saveState() {
   const accounts = loadAccounts();
@@ -446,6 +451,8 @@ function saveState() {
 function switchAccount(accountName) {
   activeAccount = cleanAccountName(accountName);
   state = loadAccountState(activeAccount);
+  accountConfirmed = true;
+  saveState();
   saveActiveAccount(activeAccount);
   render();
   scrollToStage(getVisibleStage());
@@ -725,6 +732,11 @@ function confirmResetGame() {
 
 function renderSteps() {
   Object.values(elements.steps).forEach((item) => item.classList.remove("active", "done"));
+  if (!accountConfirmed) {
+    elements.steps.account.classList.add("active");
+    return;
+  }
+  elements.steps.account.classList.add("done");
   if (!state.serverId) {
     elements.steps.server.classList.add("active");
     return;
@@ -744,6 +756,7 @@ function renderSteps() {
 }
 
 function getVisibleStage() {
+  if (!accountConfirmed) return "account";
   if (!state.serverId) return "server";
   if (state.lastReport && !state.reportSeen) return "report";
   return "draw";
@@ -775,7 +788,7 @@ function renderMetrics() {
   elements.playerMetric.textContent = server ? `${Math.round(state.active).toLocaleString("zh-CN")} / ${Math.round(state.reputation)}` : "-";
   elements.riskMetric.textContent = server ? `风险 ${Math.round(state.risk)} · 热度 ${Math.round(state.heat)}` : "风险 -";
   if (!server) {
-    elements.topReportTitle.textContent = "还没开服，先选一个服务器";
+    elements.topReportTitle.textContent = accountConfirmed ? "还没开服，先选一个服务器" : "先确认当前账号，再开始本季运营";
   } else if (state.currentEventId && state.selectedActivityId) {
     elements.topReportTitle.textContent = `已选择「${getActivity()?.name}」，点击结算当日流水`;
   } else if (state.currentEventId) {
@@ -786,6 +799,37 @@ function renderMetrics() {
     elements.topReportTitle.textContent = `${server.name} D${state.day}：先抽今日事件卡`;
   }
   document.querySelector(".top-board").classList.toggle("settled", Boolean(state.lastReport));
+}
+
+function renderLeaderboard() {
+  const accounts = loadAccounts();
+  const rows = Object.entries(accounts)
+    .map(([name, accountState]) => {
+      const server = accountState.serverId ? getServer(accountState.serverId) : null;
+      return {
+        name,
+        totalRevenue: accountState.totalRevenue || 0,
+        cash: accountState.cash || 0,
+        day: accountState.serverId ? Math.min(accountState.day || 1, MAX_DAY) : 0,
+        serverName: server?.name || "未开服",
+      };
+    })
+    .sort((left, right) => right.totalRevenue - left.totalRevenue || right.cash - left.cash || left.name.localeCompare(right.name, "zh-CN"));
+  elements.leaderboardCount.textContent = `${rows.length} 个账号`;
+  elements.leaderboardList.innerHTML = rows.length
+    ? rows
+        .slice(0, 5)
+        .map(
+          (row, index) => `
+            <li class="${row.name === activeAccount ? "current" : ""}">
+              <span class="rank">${index + 1}</span>
+              <strong>${row.name}</strong>
+              <small>${row.serverName} · D${row.day || "-"} · 现金 ${money(row.cash)}</small>
+              <b>${money(row.totalRevenue)}</b>
+            </li>`
+        )
+        .join("")
+    : `<li class="empty-rank"><strong>暂无账号流水</strong><small>确认账号并开始运营后会进入排行榜。</small></li>`;
 }
 
 function renderServers() {
@@ -880,6 +924,7 @@ function render() {
   renderStagePanels();
   renderSteps();
   renderMetrics();
+  renderLeaderboard();
   renderServers();
   renderEventCard();
   renderActivities();
@@ -934,6 +979,7 @@ elements.continueButton.addEventListener("click", () => {
   scrollToStage("draw");
 });
 elements.switchAccountButton.addEventListener("click", () => switchAccount(elements.accountInput.value));
+elements.confirmAccountButton.addEventListener("click", () => switchAccount(elements.accountInput.value));
 elements.accountInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") switchAccount(elements.accountInput.value);
 });
