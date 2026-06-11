@@ -327,12 +327,14 @@ const eventCards = [
 const elements = {
   targetMetric: document.querySelector("#targetMetric"),
   serverFlavor: document.querySelector("#serverFlavor"),
+  topReportTitle: document.querySelector("#topReportTitle"),
   dayMetric: document.querySelector("#dayMetric"),
   serverMetric: document.querySelector("#serverMetric"),
   cashMetric: document.querySelector("#cashMetric"),
   netMetric: document.querySelector("#netMetric"),
   revenueMetric: document.querySelector("#revenueMetric"),
   totalRevenueMetric: document.querySelector("#totalRevenueMetric"),
+  targetProgressMetric: document.querySelector("#targetProgressMetric"),
   playerMetric: document.querySelector("#playerMetric"),
   riskMetric: document.querySelector("#riskMetric"),
   serverCards: document.querySelector("#serverCards"),
@@ -340,6 +342,7 @@ const elements = {
   eventCard: document.querySelector("#eventCard"),
   activityCards: document.querySelector("#activityCards"),
   settleButton: document.querySelector("#settleButton"),
+  continueButton: document.querySelector("#continueButton"),
   dailyReport: document.querySelector("#dailyReport"),
   logList: document.querySelector("#logList"),
   resetButton: document.querySelector("#resetButton"),
@@ -349,6 +352,7 @@ const elements = {
   resultText: document.querySelector("#resultText"),
   resultStats: document.querySelector("#resultStats"),
   dialogResetButton: document.querySelector("#dialogResetButton"),
+  stagePanels: document.querySelectorAll("[data-stage]"),
   steps: {
     server: document.querySelector("#stepServer"),
     draw: document.querySelector("#stepDraw"),
@@ -373,6 +377,7 @@ function freshState() {
     currentEventId: null,
     selectedActivityId: null,
     lastReport: null,
+    reportSeen: true,
     log: [],
     over: false,
   };
@@ -391,6 +396,12 @@ let state = loadState();
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function scrollToStage(stage) {
+  const panel = document.querySelector(`[data-stage="${stage}"]`);
+  if (!panel) return;
+  window.setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
 }
 
 function getServer(id = state.serverId) {
@@ -451,6 +462,7 @@ function startServer(serverId) {
   };
   saveState();
   render();
+  scrollToStage("draw");
 }
 
 function drawEvent() {
@@ -459,8 +471,10 @@ function drawEvent() {
   state.currentEventId = event.id;
   state.selectedActivityId = null;
   state.lastReport = null;
+  state.reportSeen = true;
   saveState();
   render();
+  scrollToStage("draw");
 }
 
 function selectActivity(activityId) {
@@ -470,6 +484,7 @@ function selectActivity(activityId) {
   state.selectedActivityId = activityId;
   saveState();
   render();
+  scrollToStage("draw");
 }
 
 function applyActivityEventEffects(activity, event) {
@@ -586,6 +601,7 @@ function settleDay() {
   report.playerFeedback = getPlayerFeedback(report);
   report.bossFeedback = getBossFeedback(report);
   state.lastReport = report;
+  state.reportSeen = false;
   state.log.unshift({
     day: state.day,
     title: `${event.title} · ${activity.name}`,
@@ -602,6 +618,7 @@ function settleDay() {
   }
   saveState();
   render();
+  scrollToStage("report");
   if (result) showResult(result);
 }
 
@@ -643,6 +660,12 @@ function renderSteps() {
     return;
   }
   elements.steps.server.classList.add("done");
+  if (state.lastReport && !state.reportSeen) {
+    elements.steps.draw.classList.add("done");
+    elements.steps.operate.classList.add("done");
+    elements.steps.settle.classList.add("active");
+    return;
+  }
   if (!state.currentEventId && !state.selectedActivityId) elements.steps.draw.classList.add("active");
   if (state.currentEventId) elements.steps.draw.classList.add("done");
   if (state.currentEventId && !state.selectedActivityId) elements.steps.operate.classList.add("active");
@@ -650,18 +673,48 @@ function renderSteps() {
   if (state.currentEventId && state.selectedActivityId) elements.steps.settle.classList.add("active");
 }
 
+function getVisibleStage() {
+  if (!state.serverId) return "server";
+  if (state.lastReport && !state.reportSeen) return "report";
+  return "draw";
+}
+
+function renderStagePanels() {
+  const visibleStage = getVisibleStage();
+  elements.stagePanels.forEach((panel) => {
+    panel.hidden = panel.dataset.stage !== visibleStage;
+    if (panel.dataset.stage === "draw") {
+      panel.classList.toggle("draw-only", !state.currentEventId);
+      panel.classList.toggle("event-drawn", Boolean(state.currentEventId));
+    }
+  });
+}
+
 function renderMetrics() {
   const server = getServer();
   elements.targetMetric.textContent = server ? `目标 ${money(server.targetRevenue)} 流水` : "先选择服务器";
   elements.serverFlavor.textContent = server ? server.desc : "不同服务器决定玩家结构、付费强度和风险底色。";
-  elements.dayMetric.textContent = server ? `${Math.min(state.day, MAX_DAY)}/${MAX_DAY}` : "-";
+  elements.dayMetric.textContent = server ? `D${Math.min(state.day, MAX_DAY)}/${MAX_DAY}` : "未开服";
   elements.serverMetric.textContent = server ? `${server.name} · ${server.tag}` : "未开服";
   elements.cashMetric.textContent = server ? money(state.cash) : "-";
-  elements.netMetric.textContent = server ? `昨日净收益 ${money(state.yesterdayNet)}` : "昨日净收益 -";
-  elements.revenueMetric.textContent = server ? money(state.todayRevenue) : "-";
+  elements.netMetric.textContent = server ? money(state.yesterdayNet) : "-";
+  elements.revenueMetric.textContent = server ? `流水 ${money(state.todayRevenue)} · 支出 ${money(state.todayExpense)}` : "流水 / 支出 -";
   elements.totalRevenueMetric.textContent = server ? `累计流水 ${money(state.totalRevenue)}` : "累计流水 -";
+  elements.targetProgressMetric.textContent = server ? `目标进度 ${Math.round((state.totalRevenue / server.targetRevenue) * 100)}%` : "目标进度 -";
   elements.playerMetric.textContent = server ? `${Math.round(state.active).toLocaleString("zh-CN")} / ${Math.round(state.reputation)}` : "-";
   elements.riskMetric.textContent = server ? `风险 ${Math.round(state.risk)} · 热度 ${Math.round(state.heat)}` : "风险 -";
+  if (!server) {
+    elements.topReportTitle.textContent = "还没开服，先选一个服务器";
+  } else if (state.currentEventId && state.selectedActivityId) {
+    elements.topReportTitle.textContent = `已选择「${getActivity()?.name}」，点击结算当日流水`;
+  } else if (state.currentEventId) {
+    elements.topReportTitle.textContent = `抽到「${getEvent()?.title}」，现在选择运营活动`;
+  } else if (state.lastReport) {
+    elements.topReportTitle.textContent = `${state.lastReport.net >= 0 ? "昨日净赚" : "昨日净亏"} ${money(Math.abs(state.lastReport.net))} · ${state.lastReport.eventTitle}`;
+  } else {
+    elements.topReportTitle.textContent = `${server.name} D${state.day}：先抽今日事件卡`;
+  }
+  document.querySelector(".top-board").classList.toggle("settled", Boolean(state.lastReport));
 }
 
 function renderServers() {
@@ -688,15 +741,17 @@ function renderEventCard() {
   }
   if (!event) {
     elements.eventCard.className = "event-card empty-card";
-    elements.eventCard.innerHTML = `<span>未抽卡</span><strong>点击“抽今日事件”</strong><p>抽到好卡就顺势放大收益，抽到坏卡就想办法止损。</p>`;
+    elements.eventCard.innerHTML = `<span>未抽卡</span><strong>点击“抽今日事件”</strong><p>抽到好卡就顺势放大收益，抽到坏卡就想办法止损。抽完卡后才会开放今日运营活动。</p>`;
     return;
   }
   elements.eventCard.className = `event-card ${getEventClass(event.type)}`;
-  elements.eventCard.innerHTML = `<span>${event.type === "good" ? "正面事件" : event.type === "bad" ? "负面事件" : event.type === "chaos" ? "混沌事件" : "普通事件"}</span><strong>${event.title}</strong><p>${event.text}</p>`;
+  elements.eventCard.innerHTML = `<span>${event.type === "good" ? "正面事件" : event.type === "bad" ? "负面事件" : event.type === "chaos" ? "混沌事件" : "普通事件"}</span><strong>${event.title}</strong><p>${event.text}</p><small>卡面事件已生效，请根据这张卡选择今日运营活动。</small>`;
 }
 
 function renderActivities() {
   const canOperate = Boolean(state.currentEventId) && !state.over;
+  const activityPanel = document.querySelector(".activity-panel");
+  activityPanel.hidden = !canOperate;
   elements.activityCards.innerHTML = activities
     .map((activity) => {
       const locked = activity.unlockDay && state.day < activity.unlockDay;
@@ -714,6 +769,7 @@ function renderActivities() {
     })
     .join("");
   elements.settleButton.disabled = !state.currentEventId || !state.selectedActivityId || state.over;
+  activityPanel.classList.toggle("locked-panel", !state.currentEventId);
 }
 
 function renderReport() {
@@ -750,6 +806,7 @@ function renderLog() {
 }
 
 function render() {
+  renderStagePanels();
   renderSteps();
   renderMetrics();
   renderServers();
@@ -799,6 +856,12 @@ elements.activityCards.addEventListener("click", (event) => {
 
 elements.drawButton.addEventListener("click", drawEvent);
 elements.settleButton.addEventListener("click", settleDay);
+elements.continueButton.addEventListener("click", () => {
+  state.reportSeen = true;
+  saveState();
+  render();
+  scrollToStage("draw");
+});
 elements.resetButton.addEventListener("click", resetGame);
 elements.dialogResetButton.addEventListener("click", resetGame);
 

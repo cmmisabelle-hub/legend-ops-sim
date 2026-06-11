@@ -171,8 +171,6 @@ h2 {
 }
 
 .season-card span,
-.metric span,
-.metric small,
 .report-grid span,
 .result-stats span {
   display: block;
@@ -223,19 +221,94 @@ h2 {
   background: rgba(74, 222, 128, 0.08);
 }
 
-.dashboard {
+.stage-panel[hidden] {
+  display: none !important;
+}
+
+.stage-panel {
+  animation: stageIn 260ms ease both;
+}
+
+@keyframes stageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.top-board {
+  margin-top: 14px;
+  padding: 20px;
+  border-color: rgba(255, 209, 102, 0.3);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(255, 209, 102, 0.18), transparent 15rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.028)),
+    var(--paper);
+}
+
+.top-board.settled {
+  border-color: rgba(74, 222, 128, 0.34);
+  box-shadow: 0 0 36px rgba(74, 222, 128, 0.12), var(--shadow);
+}
+
+.top-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.top-board-head h2 {
+  font-size: clamp(1.4rem, 3vw, 2.25rem);
+  line-height: 1.15;
+}
+
+.day-pill {
+  flex: 0 0 auto;
+  min-width: 98px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 999px;
+  color: #1c1208;
+  font-size: 1.05rem;
+  font-weight: 950;
+  text-align: center;
+  background: linear-gradient(180deg, #ffe8a8, var(--gold));
+  box-shadow: 0 0 28px rgba(255, 209, 102, 0.18);
+}
+
+.top-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 14px;
+  gap: 10px;
 }
 
-.metric {
-  min-height: 126px;
-  padding: 22px;
+.top-stat {
+  min-height: 112px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.052);
 }
 
-.metric strong {
+.top-stat.hero-stat {
+  border-color: rgba(255, 209, 102, 0.28);
+  background: linear-gradient(145deg, rgba(255, 209, 102, 0.16), rgba(255, 255, 255, 0.052));
+}
+
+.top-stat span,
+.top-stat small {
+  display: block;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.top-stat strong {
   display: block;
   margin: 10px 0 8px;
   color: #ffffff;
@@ -254,6 +327,16 @@ h2 {
 
 .server-panel {
   margin-top: 14px;
+}
+
+.stage-panel.panel,
+.stage-panel .panel {
+  border-color: rgba(255, 209, 102, 0.24);
+}
+
+.locked-panel {
+  opacity: 0.45;
+  filter: grayscale(0.35);
 }
 
 .section-head {
@@ -375,6 +458,19 @@ h2 {
   margin-top: 14px;
 }
 
+.game-grid.draw-only {
+  grid-template-columns: minmax(280px, 720px);
+  justify-content: center;
+}
+
+.game-grid.draw-only .draw-panel {
+  min-height: 420px;
+}
+
+.game-grid.draw-only .event-card {
+  min-height: 300px;
+}
+
 .lower-grid {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
 }
@@ -385,6 +481,23 @@ h2 {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   background: linear-gradient(145deg, rgba(255, 209, 102, 0.14), rgba(255, 255, 255, 0.052));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 18px 50px rgba(0, 0, 0, 0.22);
+  transform-style: preserve-3d;
+}
+
+.event-card:not(.empty-card) {
+  animation: cardFlip 420ms ease both;
+}
+
+@keyframes cardFlip {
+  from {
+    opacity: 0;
+    transform: rotateY(-16deg) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0) translateY(0);
+  }
 }
 
 .event-card span {
@@ -412,6 +525,17 @@ h2 {
   font-size: 1.02rem;
   font-weight: 620;
   line-height: 1.68;
+}
+
+.event-card small {
+  display: block;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #ffe9b0;
+  font-weight: 850;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .event-card.good {
@@ -649,7 +773,7 @@ h2 {
   }
 
   .steps,
-  .dashboard,
+  .top-stats,
   .server-cards,
   .activity-cards,
   .report-grid,

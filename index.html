@@ -34,30 +34,39 @@
         <div class="step" id="stepSettle">结算当日流水</div>
       </section>
 
-      <section class="dashboard">
-        <article class="metric panel">
-          <span>运营日</span>
-          <strong id="dayMetric">-</strong>
-          <small id="serverMetric">未开服</small>
-        </article>
-        <article class="metric panel">
-          <span>可用现金</span>
-          <strong id="cashMetric">-</strong>
-          <small id="netMetric">昨日净收益 -</small>
-        </article>
-        <article class="metric panel">
-          <span>今日流水</span>
-          <strong id="revenueMetric">-</strong>
-          <small id="totalRevenueMetric">累计流水 -</small>
-        </article>
-        <article class="metric panel">
-          <span>活跃 / 口碑</span>
-          <strong id="playerMetric">-</strong>
-          <small id="riskMetric">风险 -</small>
-        </article>
+      <section class="top-board panel">
+        <div class="top-board-head">
+          <div>
+            <p class="eyebrow">昨日战报</p>
+            <h2 id="topReportTitle">还没开服，先选一个服务器</h2>
+          </div>
+          <div class="day-pill" id="dayMetric">-</div>
+        </div>
+        <div class="top-stats">
+          <article class="top-stat hero-stat">
+            <span>昨日净收益</span>
+            <strong id="netMetric">-</strong>
+            <small id="revenueMetric">今日流水 -</small>
+          </article>
+          <article class="top-stat">
+            <span>可用现金</span>
+            <strong id="cashMetric">-</strong>
+            <small id="totalRevenueMetric">累计流水 -</small>
+          </article>
+          <article class="top-stat">
+            <span>服务器</span>
+            <strong id="serverMetric">未开服</strong>
+            <small id="targetProgressMetric">目标进度 -</small>
+          </article>
+          <article class="top-stat">
+            <span>活跃 / 口碑</span>
+            <strong id="playerMetric">-</strong>
+            <small id="riskMetric">风险 -</small>
+          </article>
+        </div>
       </section>
 
-      <section class="server-panel panel">
+      <section class="server-panel panel stage-panel" data-stage="server">
         <div class="section-head">
           <div>
             <p class="eyebrow">开服前选择</p>
@@ -68,7 +77,7 @@
         <div id="serverCards" class="server-cards"></div>
       </section>
 
-      <section class="game-grid">
+      <section class="game-grid stage-panel" data-stage="draw">
         <section class="panel draw-panel">
           <div class="section-head compact">
             <div>
@@ -84,7 +93,7 @@
           </div>
         </section>
 
-        <section class="panel activity-panel">
+        <section class="panel activity-panel locked-panel">
           <div class="section-head compact">
             <div>
               <p class="eyebrow">今日决策</p>
@@ -96,13 +105,14 @@
         </section>
       </section>
 
-      <section class="game-grid lower-grid">
+      <section class="game-grid lower-grid stage-panel" data-stage="report">
         <section class="panel report-panel">
           <div class="section-head compact">
             <div>
               <p class="eyebrow">财务结算</p>
               <h2>当日流水与支出</h2>
             </div>
+            <button id="continueButton" class="primary-button">进入下一天抽卡</button>
           </div>
           <div id="dailyReport" class="daily-report">
             <div class="empty-state">抽取事件并选择运营活动后，会在这里生成当日流水、支出、净收益和反馈。</div>
