@@ -1300,6 +1300,32 @@ h2 {
   background: transparent;
 }
 
+.story-dialog:not([open]),
+.guide-dialog:not([open]),
+.result-dialog:not([open]) {
+  display: none;
+}
+
+.story-dialog.fallback-open,
+.guide-dialog.fallback-open,
+.result-dialog.fallback-open {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 80;
+  display: block;
+  max-height: calc(100vh - 28px);
+  max-height: calc(100dvh - 28px);
+  margin: 0;
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 999vmax rgba(8, 4, 18, 0.72);
+}
+
+body.dialog-fallback-active {
+  overflow: hidden;
+}
+
 .story-dialog::backdrop {
   background:
     radial-gradient(circle at 50% 20%, rgba(255, 209, 102, 0.2), transparent 20rem),
