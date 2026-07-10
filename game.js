@@ -21,6 +21,25 @@ const rarityConfig = {
   gold: { label: "金色大赚", tone: "爆款庆祝", className: "gold" },
 };
 
+const storySteps = [
+  {
+    title: "停服前夜",
+    text: "凌晨两点，沙城服务器还亮着红灯。老板把一份报表推到你面前：买量费烧穿、行会群在吵、榜一说要退服。这个项目只剩 7 天窗口，救不回来就关服止损。",
+  },
+  {
+    title: "旧城新盘",
+    text: "你接手的不是一款新游戏，而是一座还在喘气的老城。散人要公平，大 R 要排面，渠道要流水，平台要合规。每一个按钮背后，都有人在等你的选择。",
+  },
+  {
+    title: "七日军令",
+    text: "财务只给了一个数字：7 天目标流水。达标，项目组继续开新区；失败，复盘会后团队解散。你每天只能先抽一张运营卡，再从有限活动里做选择。",
+  },
+  {
+    title: "开服令",
+    text: "城门已经挂起战旗，渠道群等着素材，玩家群等着公告。确认账号、看完引导、选定服务器后，这一局就正式开服。",
+  },
+];
+
 const guideSteps = [
   {
     title: "欢迎接手项目",
@@ -433,6 +452,7 @@ const elements = {
   activityRerollMetric: document.querySelector("#activityRerollMetric"),
   settleButton: document.querySelector("#settleButton"),
   continueButton: document.querySelector("#continueButton"),
+  startStoryButton: document.querySelector("#startStoryButton"),
   startGuideButton: document.querySelector("#startGuideButton"),
   accountInput: document.querySelector("#accountInput"),
   switchAccountButton: document.querySelector("#switchAccountButton"),
@@ -455,6 +475,12 @@ const elements = {
   guidePrevButton: document.querySelector("#guidePrevButton"),
   guideNextButton: document.querySelector("#guideNextButton"),
   guideSkipButton: document.querySelector("#guideSkipButton"),
+  storyDialog: document.querySelector("#storyDialog"),
+  storyTitle: document.querySelector("#storyTitle"),
+  storyText: document.querySelector("#storyText"),
+  storyProgress: document.querySelector("#storyProgress"),
+  storyPrevButton: document.querySelector("#storyPrevButton"),
+  storyNextButton: document.querySelector("#storyNextButton"),
   dailyReport: document.querySelector("#dailyReport"),
   logList: document.querySelector("#logList"),
   resetButton: document.querySelector("#resetButton"),
@@ -470,6 +496,7 @@ const elements = {
   stagePanels: document.querySelectorAll("[data-stage]"),
   steps: {
     account: document.querySelector("#stepAccount"),
+    story: document.querySelector("#stepStory"),
     guide: document.querySelector("#stepGuide"),
     server: document.querySelector("#stepServer"),
     draw: document.querySelector("#stepDraw"),
@@ -478,7 +505,7 @@ const elements = {
   },
 };
 
-const stepOrder = ["account", "guide", "server", "draw", "operate", "settle"];
+const stepOrder = ["account", "story", "guide", "server", "draw", "operate", "settle"];
 
 function freshState() {
   return {
@@ -497,6 +524,7 @@ function freshState() {
     selectedActivityId: null,
     offeredActivityId: null,
     activityRerollsUsed: 0,
+    storySeen: false,
     guideSeen: false,
     lastReport: null,
     reportSeen: true,
@@ -554,6 +582,8 @@ function loadAccountState(accountName) {
 let activeAccount = loadActiveAccount();
 let state = loadState();
 let accountConfirmed = false;
+let storyIndex = 0;
+let storyMandatory = false;
 let guideIndex = 0;
 let guideMandatory = false;
 
@@ -562,6 +592,53 @@ function saveState() {
   accounts[activeAccount] = state;
   saveAccounts(accounts);
   saveActiveAccount(activeAccount);
+}
+
+function openStory(index = 0, options = {}) {
+  storyMandatory = Boolean(options.mandatory);
+  storyIndex = clamp(index, 0, storySteps.length - 1);
+  renderStory();
+  if (typeof elements.storyDialog.showModal === "function") {
+    elements.storyDialog.showModal();
+  } else {
+    elements.storyDialog.setAttribute("open", "");
+  }
+  window.setTimeout(() => elements.storyNextButton.focus({ preventScroll: true }), 80);
+}
+
+function closeStory() {
+  if (storyMandatory && !state.storySeen) return;
+  if (elements.storyDialog.open && typeof elements.storyDialog.close === "function") {
+    elements.storyDialog.close();
+  } else {
+    elements.storyDialog.removeAttribute("open");
+  }
+  storyMandatory = false;
+}
+
+function completeStory() {
+  state.storySeen = true;
+  saveState();
+  closeStory();
+  render();
+  scrollToNextAction();
+  maybeOpenGuide();
+}
+
+function renderStory() {
+  const step = storySteps[storyIndex];
+  elements.storyTitle.textContent = step.title;
+  elements.storyText.textContent = step.text;
+  elements.storyProgress.textContent = `${storyIndex + 1} / ${storySteps.length}`;
+  elements.storyPrevButton.disabled = storyIndex === 0;
+  elements.storyNextButton.textContent = storyIndex === storySteps.length - 1 ? "接下军令" : "下一幕";
+}
+
+function maybeOpenStory() {
+  if (!accountConfirmed || state.storySeen || elements.storyDialog.open) return;
+  window.setTimeout(() => {
+    if (accountConfirmed && !state.storySeen && !elements.storyDialog.open) openStory(0, { mandatory: true });
+  }, 120);
 }
 
 function openGuide(index = 0, options = {}) {
@@ -606,9 +683,9 @@ function renderGuide() {
 }
 
 function maybeOpenGuide() {
-  if (!accountConfirmed || state.guideSeen || elements.guideDialog.open) return;
+  if (!accountConfirmed || !state.storySeen || state.guideSeen || elements.guideDialog.open) return;
   window.setTimeout(() => {
-    if (accountConfirmed && !state.guideSeen && !elements.guideDialog.open) openGuide(0, { mandatory: true });
+    if (accountConfirmed && state.storySeen && !state.guideSeen && !elements.guideDialog.open) openGuide(0, { mandatory: true });
   }, 120);
 }
 
@@ -620,6 +697,7 @@ function switchAccount(accountName) {
   saveActiveAccount(activeAccount);
   render();
   scrollToNextAction();
+  maybeOpenStory();
   maybeOpenGuide();
 }
 
@@ -639,6 +717,7 @@ function scrollToElement(element) {
 
 function getNextActionElement() {
   if (!accountConfirmed) return elements.confirmAccountButton;
+  if (!state.storySeen) return elements.startStoryButton;
   if (!state.guideSeen) return elements.startGuideButton;
   if (!state.serverId) return elements.serverCards.querySelector("[data-server]");
   if (state.lastReport && !state.reportSeen) return elements.continueButton;
@@ -791,9 +870,10 @@ function snapshot() {
 
 function startServer(serverId) {
   const server = getServer(serverId);
-  if (!server || !state.guideSeen) return;
+  if (!server || !state.storySeen || !state.guideSeen) return;
   state = {
     ...freshState(),
+    storySeen: true,
     guideSeen: true,
     serverId: server.id,
     cash: server.cash,
@@ -1025,6 +1105,7 @@ function resetGame() {
   if (elements.resultDialog.open && typeof elements.resultDialog.close === "function") elements.resultDialog.close();
   render();
   scrollToNextAction();
+  maybeOpenStory();
   maybeOpenGuide();
 }
 
@@ -1046,6 +1127,7 @@ function confirmResetGame() {
 
 function getCurrentStep() {
   if (!accountConfirmed) return "account";
+  if (!state.storySeen) return "story";
   if (!state.guideSeen) return "guide";
   if (!state.serverId) return "server";
   if (state.lastReport && !state.reportSeen) return "settle";
@@ -1077,6 +1159,7 @@ function renderSteps() {
 
 function getVisibleStage() {
   if (!accountConfirmed) return "account";
+  if (!state.storySeen) return "story";
   if (!state.guideSeen) return "guide";
   if (!state.serverId) return "server";
   if (state.lastReport && !state.reportSeen) return "report";
@@ -1174,22 +1257,30 @@ function getMentorState() {
   if (!accountConfirmed) {
     return {
       title: "任务 1：确认账号",
-      text: "先输入账号名并确认。确认后我会把你带到创角选服，所有账号进度会独立保存。",
+      text: "先输入账号名并确认。确认后会进入本局背景故事，再完成引导和创角选服。",
       action: "确认账号",
       stage: "account",
     };
   }
+  if (!state.storySeen) {
+    return {
+      title: "任务 2：听完背景故事",
+      text: "这一局开始前，先看清你接手的是怎样一个传奇项目。故事结束后才会进入新手引导。",
+      action: "进入故事",
+      stage: "story",
+    };
+  }
   if (!state.guideSeen) {
     return {
-      title: "任务 2：完成开局引导",
-      text: "每个账号第一次开局前必须看完引导。完成后才会开放创角选服。",
+      title: "任务 3：完成开局引导",
+      text: "每局开始前必须看完引导。完成后才会开放创角选服。",
       action: "开始引导",
       stage: "guide",
     };
   }
   if (!server) {
     return {
-      title: "任务 3：选择首服类型",
+      title: "任务 4：选择首服类型",
       text: "选服决定 7 天目标和玩家结构。绿色服稳，土豪服爆发强，滚服冲榜快。",
       action: "去选服",
       stage: "server",
@@ -1197,7 +1288,7 @@ function getMentorState() {
   }
   if (state.lastReport && !state.reportSeen) {
     return {
-      title: "任务 6：查看当日结算",
+      title: "任务 7：查看当日结算",
       text: "先看流水、支出和反馈，再进入下一天。别忘了看目标进度条是否落后。",
       action: "查看结算",
       stage: "report",
@@ -1205,7 +1296,7 @@ function getMentorState() {
   }
   if (!state.currentEventId) {
     return {
-      title: `任务 4：D${state.day} 抽运营卡`,
+      title: `任务 5：D${state.day} 抽运营卡`,
       text: "抽卡前会先判定必出条件：落后补金卡，领先可能吃红卡，最近 3 天不重复。",
       action: "去抽卡",
       stage: "draw",
@@ -1213,14 +1304,14 @@ function getMentorState() {
   }
   if (!state.selectedActivityId) {
     return {
-      title: "任务 5：按卡面做运营",
+      title: "任务 6：按卡面做运营",
       text: "系统每天随机给 1 个运营活动。你可以直接选，也可以点“换一个”，每天最多换 3 次。",
       action: "选活动",
       stage: "draw",
     };
   }
   return {
-    title: "任务 6：结算当日流水",
+    title: "任务 7：结算当日流水",
     text: "活动已选好，现在结算当日流水。净收益会推进 7 天赚钱进度条。",
     action: "去结算",
     stage: "draw",
@@ -1409,8 +1500,30 @@ elements.topChooseServerButton.addEventListener("click", chooseServerAgain);
 elements.resetButton.addEventListener("click", confirmResetGame);
 elements.topResetButton.addEventListener("click", confirmResetGame);
 elements.dialogResetButton.addEventListener("click", resetGame);
+elements.startStoryButton.addEventListener("click", () => openStory(0, { mandatory: true }));
+elements.storyDialog.addEventListener("cancel", (event) => {
+  if (storyMandatory && !state.storySeen) event.preventDefault();
+});
+elements.storyPrevButton.addEventListener("click", () => {
+  storyIndex = Math.max(0, storyIndex - 1);
+  renderStory();
+});
+elements.storyNextButton.addEventListener("click", () => {
+  if (storyIndex >= storySteps.length - 1) {
+    completeStory();
+    return;
+  }
+  storyIndex += 1;
+  renderStory();
+});
 elements.startGuideButton.addEventListener("click", () => openGuide(0, { mandatory: true }));
-elements.guideButton.addEventListener("click", () => openGuide(0));
+elements.guideButton.addEventListener("click", () => {
+  if (accountConfirmed && !state.storySeen) {
+    openStory(0, { mandatory: true });
+    return;
+  }
+  openGuide(0);
+});
 elements.guideDialog.addEventListener("cancel", (event) => {
   if (guideMandatory && !state.guideSeen) event.preventDefault();
 });
@@ -1436,6 +1549,9 @@ elements.mentorActionButton.addEventListener("click", () => {
   const mentor = getMentorState();
   if (!accountConfirmed) {
     elements.accountInput.focus();
+  } else if (!state.storySeen) {
+    openStory(0, { mandatory: true });
+    return;
   } else if (!state.guideSeen) {
     openGuide(0, { mandatory: true });
     return;
@@ -1445,4 +1561,5 @@ elements.mentorActionButton.addEventListener("click", () => {
 
 render();
 scrollToNextAction();
+maybeOpenStory();
 maybeOpenGuide();

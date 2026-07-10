@@ -294,6 +294,7 @@ h2 {
 .step:nth-child(4)::before { content: "4"; }
 .step:nth-child(5)::before { content: "5"; }
 .step:nth-child(6)::before { content: "6"; }
+.step:nth-child(7)::before { content: "7"; }
 
 .step.active {
   color: #1a1208;
@@ -719,6 +720,7 @@ h2 {
 }
 
 .account-panel,
+.story-panel,
 .guide-panel {
   margin-top: 14px;
   padding: 26px;
@@ -1282,6 +1284,14 @@ h2 {
   background: transparent;
 }
 
+.story-dialog {
+  width: min(780px, calc(100% - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: 30px;
+  background: transparent;
+}
+
 .guide-dialog {
   width: min(720px, calc(100% - 28px));
   padding: 0;
@@ -1290,9 +1300,42 @@ h2 {
   background: transparent;
 }
 
+.story-dialog::backdrop {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 209, 102, 0.2), transparent 20rem),
+    rgba(12, 4, 4, 0.78);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
 .guide-dialog::backdrop {
   background: rgba(15, 20, 45, 0.68);
   backdrop-filter: blur(14px);
+}
+
+.story-card {
+  padding: 30px;
+  border: 1px solid rgba(255, 209, 102, 0.56);
+  border-radius: 30px;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(255, 209, 102, 0.22), transparent 16rem),
+    radial-gradient(ellipse at 100% 22%, rgba(239, 68, 68, 0.18), transparent 18rem),
+    linear-gradient(145deg, rgba(69, 24, 16, 0.96), rgba(18, 8, 9, 0.97));
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.55), inset 0 0 42px rgba(255, 209, 102, 0.08);
+}
+
+.story-card > p {
+  min-height: 170px;
+  margin: 0;
+  padding: 22px;
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  border-radius: 20px;
+  color: #fff4d6;
+  font-size: 1.18rem;
+  font-weight: 760;
+  line-height: 1.8;
+  background:
+    linear-gradient(180deg, rgba(255, 209, 102, 0.08), rgba(0, 0, 0, 0.2)),
+    rgba(0, 0, 0, 0.18);
 }
 
 .guide-card {
@@ -1629,6 +1672,7 @@ h1 {
 }
 
 .guide-card,
+.story-card,
 .dialog-card {
   border-color: rgba(255, 209, 102, 0.52);
   background:
@@ -1638,6 +1682,7 @@ h1 {
 }
 
 .guide-dialog::backdrop,
+.story-dialog::backdrop,
 .result-dialog::backdrop {
   background: rgba(24, 8, 8, 0.72);
   backdrop-filter: blur(16px) saturate(1.18);
@@ -1990,6 +2035,7 @@ h1 {
 
   .hero,
   .account-panel,
+  .story-panel,
   .guide-panel,
   .server-panel,
   .draw-panel,

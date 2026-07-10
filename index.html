@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>做了个传奇 - 抽卡运营页游</title>
-    <link rel="stylesheet" href="styles.css?v=20260710-1145" />
+    <link rel="stylesheet" href="styles.css?v=20260710-1430" />
   </head>
   <body>
     <main class="shell">
@@ -15,11 +15,12 @@
           <p class="subtitle">先确认账号，再创角选服。每个项目只有 7 天冲刺目标流水，抽运营卡、做活动、看回款。运气好的玩家 3 天就能达标，7 天没完成就项目卒。</p>
           <div class="rules" aria-label="基础循环">
             <span data-step="account">1 账号</span>
-            <span data-step="guide" hidden>2 引导</span>
-            <span data-step="server" hidden>3 选服</span>
-            <span data-step="draw" hidden>4 抽运营卡</span>
-            <span data-step="operate" hidden>5 做运营</span>
-            <span data-step="settle" hidden>6 结流水</span>
+            <span data-step="story" hidden>2 故事</span>
+            <span data-step="guide" hidden>3 引导</span>
+            <span data-step="server" hidden>4 选服</span>
+            <span data-step="draw" hidden>5 抽运营卡</span>
+            <span data-step="operate" hidden>6 做运营</span>
+            <span data-step="settle" hidden>7 结流水</span>
           </div>
         </div>
         <div class="season-card">
@@ -63,6 +64,7 @@
 
       <section class="steps panel" aria-label="游戏流程">
         <div class="step" id="stepAccount">确认账号</div>
+        <div class="step" id="stepStory" hidden>背景故事</div>
         <div class="step" id="stepGuide" hidden>完成引导</div>
         <div class="step" id="stepServer" hidden>选择服务器</div>
         <div class="step" id="stepDraw" hidden>抽运营卡</div>
@@ -171,6 +173,20 @@
         </div>
       </section>
 
+      <section class="story-panel panel stage-panel" data-stage="story">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">开局剧情</p>
+            <h2>先听完这一局的来龙去脉</h2>
+          </div>
+          <button id="startStoryButton" class="primary-button">进入背景故事</button>
+        </div>
+        <div class="account-brief">
+          <strong>你不是在点一个运营面板，你是在接手一个快烧穿的传奇项目。</strong>
+          <p>每局开始前都会先播放背景故事。听完后才会进入新手引导，再开始创角选服。</p>
+        </div>
+      </section>
+
       <section class="guide-panel panel stage-panel" data-stage="guide">
         <div class="section-head">
           <div>
@@ -256,6 +272,24 @@
 
     <div id="celebrationLayer" class="celebration-layer" aria-hidden="true"></div>
 
+    <dialog id="storyDialog" class="story-dialog">
+      <div class="story-card">
+        <div class="guide-speaker">
+          <div class="mentor-avatar" aria-hidden="true">城</div>
+          <div>
+            <p class="eyebrow">沙城急报</p>
+            <h2 id="storyTitle">-</h2>
+          </div>
+        </div>
+        <p id="storyText">-</p>
+        <div class="guide-progress" id="storyProgress">1 / 4</div>
+        <div class="guide-actions">
+          <button id="storyPrevButton" class="ghost-button">上一幕</button>
+          <button id="storyNextButton" class="primary-button">下一幕</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="guideDialog" class="guide-dialog">
       <div class="guide-card">
         <div class="guide-speaker">
@@ -285,6 +319,6 @@
       </div>
     </dialog>
 
-    <script src="game.js?v=20260710-1145"></script>
+    <script src="game.js?v=20260710-1430"></script>
   </body>
 </html>
