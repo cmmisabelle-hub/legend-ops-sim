@@ -14,37 +14,71 @@
           <h1>做了个传奇</h1>
           <p class="subtitle">先确认账号，再创角选服。每个项目只有 7 天冲刺目标流水，抽运营卡、做活动、看回款。运气好的玩家 3 天就能达标，7 天没完成就项目卒。</p>
           <div class="rules" aria-label="基础循环">
-            <span>1 账号</span>
-            <span>2 选服</span>
-            <span>3 抽运营卡</span>
-            <span>4 做运营</span>
-            <span>5 结流水</span>
+            <span data-step="account">1 账号</span>
+            <span data-step="guide" hidden>2 引导</span>
+            <span data-step="server" hidden>3 选服</span>
+            <span data-step="draw" hidden>4 抽运营卡</span>
+            <span data-step="operate" hidden>5 做运营</span>
+            <span data-step="settle" hidden>6 结流水</span>
           </div>
         </div>
         <div class="season-card">
+          <div class="legend-hero-art" aria-hidden="true">
+            <i class="art-sun"></i>
+            <i class="art-mountain"></i>
+            <i class="art-castle"></i>
+            <i class="art-gate"></i>
+            <i class="art-flag art-flag-left"></i>
+            <i class="art-flag art-flag-right"></i>
+            <i class="art-warrior"></i>
+            <i class="art-mage"></i>
+            <i class="art-taoist"></i>
+            <i class="art-sword"></i>
+            <i class="art-flame art-flame-a"></i>
+            <i class="art-flame art-flame-b"></i>
+          </div>
           <span>本季目标</span>
           <strong id="targetMetric">先选择服务器</strong>
           <small id="serverFlavor">不同服务器决定玩家结构、付费强度和风险底色。</small>
         </div>
       </section>
 
+      <section class="legend-art-strip panel" aria-label="传奇美术氛围">
+        <article class="legend-art-card blade-art">
+          <i></i>
+          <strong>烈火刀光</strong>
+          <small>爆发窗口</small>
+        </article>
+        <article class="legend-art-card altar-art">
+          <i></i>
+          <strong>祖玛祭坛</strong>
+          <small>风险博弈</small>
+        </article>
+        <article class="legend-art-card siege-art">
+          <i></i>
+          <strong>沙城号角</strong>
+          <small>行会涌现</small>
+        </article>
+      </section>
+
       <section class="steps panel" aria-label="游戏流程">
         <div class="step" id="stepAccount">确认账号</div>
-        <div class="step" id="stepServer">选择服务器</div>
-        <div class="step" id="stepDraw">抽运营卡</div>
-        <div class="step" id="stepOperate">选择运营活动</div>
-        <div class="step" id="stepSettle">结算当日流水</div>
+        <div class="step" id="stepGuide" hidden>完成引导</div>
+        <div class="step" id="stepServer" hidden>选择服务器</div>
+        <div class="step" id="stepDraw" hidden>抽运营卡</div>
+        <div class="step" id="stepOperate" hidden>选择运营活动</div>
+        <div class="step" id="stepSettle" hidden>结算当日流水</div>
       </section>
 
       <section class="top-board panel">
         <div class="account-bar" aria-label="账号与赛季控制">
           <label class="account-field">
             <span>当前账号</span>
-            <input id="accountInput" type="text" maxlength="18" autocomplete="off" />
+            <input id="topAccountInput" type="text" maxlength="18" autocomplete="off" />
           </label>
-          <button id="switchAccountButton" class="ghost-button">确认/切换账号</button>
-          <button id="chooseServerButton" class="ghost-button">重选服务器</button>
-          <button id="resetButton" class="ghost-button danger-button">重开本账号</button>
+          <button id="topSwitchAccountButton" class="ghost-button">确认/切换账号</button>
+          <button id="topChooseServerButton" class="ghost-button">重选服务器</button>
+          <button id="topResetButton" class="ghost-button danger-button">重开本账号</button>
         </div>
         <div class="top-board-head">
           <div>
@@ -101,7 +135,29 @@
         </section>
       </section>
 
+      <section class="mentor-panel panel" aria-label="运营导师">
+        <div class="mentor-avatar" aria-hidden="true">运</div>
+        <div class="mentor-copy">
+          <p class="eyebrow">运营导师</p>
+          <h2 id="mentorTitle">先确认当前账号</h2>
+          <p id="mentorText">输入账号名后开始本季经营。每个账号的流水、进度和排行榜数据都会独立保存。</p>
+        </div>
+        <div class="mentor-actions">
+          <button id="mentorActionButton" class="primary-button">前往当前任务</button>
+          <button id="guideButton" class="ghost-button">打开引导</button>
+        </div>
+      </section>
+
       <section class="account-panel panel stage-panel" data-stage="account">
+        <div class="account-bar" aria-label="账号与赛季控制">
+          <label class="account-field">
+            <span>当前账号</span>
+            <input id="accountInput" type="text" maxlength="18" autocomplete="off" />
+          </label>
+          <button id="switchAccountButton" class="ghost-button">确认/切换账号</button>
+          <button id="chooseServerButton" class="ghost-button">重选服务器</button>
+          <button id="resetButton" class="ghost-button danger-button">重开本账号</button>
+        </div>
         <div class="section-head">
           <div>
             <p class="eyebrow">第一步</p>
@@ -111,7 +167,21 @@
         </div>
         <div class="account-brief">
           <strong>账号之间进度、现金、流水和服务器选择完全独立。</strong>
-          <p>在上方输入账号名，例如“老板号”“测试号 A”，点击确认后再选择服务器。排行榜会按所有账号的累计流水自动排序。</p>
+          <p>在这里输入账号名，例如“老板号”“测试号 A”，点击确认后再选择服务器。排行榜会按所有账号的累计流水自动排序。</p>
+        </div>
+      </section>
+
+      <section class="guide-panel panel stage-panel" data-stage="guide">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">开局必读</p>
+            <h2>先完成本账号引导</h2>
+          </div>
+          <button id="startGuideButton" class="primary-button">开始引导</button>
+        </div>
+        <div class="account-brief">
+          <strong>每个账号开始前都必须看完引导。</strong>
+          <p>看完后才会开放创角选服。切换到新账号或重开本账号时，引导会重新作为开局门槛出现。</p>
         </div>
       </section>
 
@@ -148,7 +218,11 @@
               <p class="eyebrow">今日决策</p>
               <h2>选择运营活动</h2>
             </div>
-            <button id="settleButton" class="primary-button">结算当日</button>
+            <div class="section-actions">
+              <span id="activityRerollMetric" class="reroll-meter">今日可换 3 次</span>
+              <button id="rerollActivityButton" class="ghost-button">换一个</button>
+              <button id="settleButton" class="primary-button">结算当日</button>
+            </div>
           </div>
           <div id="activityCards" class="activity-cards"></div>
         </section>
@@ -181,6 +255,25 @@
     </main>
 
     <div id="celebrationLayer" class="celebration-layer" aria-hidden="true"></div>
+
+    <dialog id="guideDialog" class="guide-dialog">
+      <div class="guide-card">
+        <div class="guide-speaker">
+          <div class="mentor-avatar" aria-hidden="true">运</div>
+          <div>
+            <p class="eyebrow">新手引导</p>
+            <h2 id="guideTitle">欢迎接手项目</h2>
+          </div>
+        </div>
+        <p id="guideText">你有 7 天时间把服务器流水做到目标线。先确认账号，再选服，之后每天抽运营卡并做经营决策。</p>
+        <div class="guide-progress" id="guideProgress">1 / 5</div>
+        <div class="guide-actions">
+          <button id="guidePrevButton" class="ghost-button">上一条</button>
+          <button id="guideNextButton" class="primary-button">下一条</button>
+          <button id="guideSkipButton" class="ghost-button">跳过引导</button>
+        </div>
+      </div>
+    </dialog>
 
     <dialog id="resultDialog" class="result-dialog">
       <div class="dialog-card">

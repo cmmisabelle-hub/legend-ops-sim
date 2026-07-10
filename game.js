@@ -3,6 +3,7 @@ const STORAGE_KEY = "legendCardOps.accounts.v1";
 const LEGACY_STORAGE_KEY = "legendCardOps.v1";
 const ACTIVE_ACCOUNT_KEY = "legendCardOps.activeAccount.v1";
 const DEFAULT_ACCOUNT = "游客账号";
+const MAX_ACTIVITY_REROLLS = 3;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const money = (value) => {
@@ -19,6 +20,29 @@ const rarityConfig = {
   purple: { label: "紫色中赚", tone: "节奏起飞", className: "purple" },
   gold: { label: "金色大赚", tone: "爆款庆祝", className: "gold" },
 };
+
+const guideSteps = [
+  {
+    title: "欢迎接手项目",
+    text: "你有 7 天时间把服务器流水做到目标线。先确认账号，再选服，之后每天抽运营卡并做经营决策。",
+  },
+  {
+    title: "第一步：确认账号",
+    text: "账号就是你的存档位。不同账号之间现金、流水、服务器和排行榜数据互不影响。",
+  },
+  {
+    title: "第二步：创角选服",
+    text: "绿色服稳、土豪服爆发高、滚服节奏快。选服后，选服模块会自然消失，进入运营卡池。",
+  },
+  {
+    title: "第三步：抽运营卡",
+    text: "系统会先判断必出条件，再从卡池随机。落后可能补金卡，领先可能吃红卡，近 3 天不会重复出同一张卡。",
+  },
+  {
+    title: "第四步：做经营决策",
+    text: "每天只随机发 1 个运营活动。你可以直接执行，也可以点“换一个”，每天最多换 3 次。7 天内达标就起飞。",
+  },
+];
 
 const serverTypes = [
   {
@@ -405,14 +429,32 @@ const elements = {
   drawButton: document.querySelector("#drawButton"),
   eventCard: document.querySelector("#eventCard"),
   activityCards: document.querySelector("#activityCards"),
+  rerollActivityButton: document.querySelector("#rerollActivityButton"),
+  activityRerollMetric: document.querySelector("#activityRerollMetric"),
   settleButton: document.querySelector("#settleButton"),
   continueButton: document.querySelector("#continueButton"),
+  startGuideButton: document.querySelector("#startGuideButton"),
   accountInput: document.querySelector("#accountInput"),
   switchAccountButton: document.querySelector("#switchAccountButton"),
   confirmAccountButton: document.querySelector("#confirmAccountButton"),
   chooseServerButton: document.querySelector("#chooseServerButton"),
+  topAccountInput: document.querySelector("#topAccountInput"),
+  topSwitchAccountButton: document.querySelector("#topSwitchAccountButton"),
+  topChooseServerButton: document.querySelector("#topChooseServerButton"),
+  topResetButton: document.querySelector("#topResetButton"),
   leaderboardCount: document.querySelector("#leaderboardCount"),
   leaderboardList: document.querySelector("#leaderboardList"),
+  mentorTitle: document.querySelector("#mentorTitle"),
+  mentorText: document.querySelector("#mentorText"),
+  mentorActionButton: document.querySelector("#mentorActionButton"),
+  guideButton: document.querySelector("#guideButton"),
+  guideDialog: document.querySelector("#guideDialog"),
+  guideTitle: document.querySelector("#guideTitle"),
+  guideText: document.querySelector("#guideText"),
+  guideProgress: document.querySelector("#guideProgress"),
+  guidePrevButton: document.querySelector("#guidePrevButton"),
+  guideNextButton: document.querySelector("#guideNextButton"),
+  guideSkipButton: document.querySelector("#guideSkipButton"),
   dailyReport: document.querySelector("#dailyReport"),
   logList: document.querySelector("#logList"),
   resetButton: document.querySelector("#resetButton"),
@@ -423,15 +465,20 @@ const elements = {
   resultStats: document.querySelector("#resultStats"),
   dialogResetButton: document.querySelector("#dialogResetButton"),
   celebrationLayer: document.querySelector("#celebrationLayer"),
+  topBoard: document.querySelector(".top-board"),
+  ruleSteps: document.querySelectorAll(".rules [data-step]"),
   stagePanels: document.querySelectorAll("[data-stage]"),
   steps: {
     account: document.querySelector("#stepAccount"),
+    guide: document.querySelector("#stepGuide"),
     server: document.querySelector("#stepServer"),
     draw: document.querySelector("#stepDraw"),
     operate: document.querySelector("#stepOperate"),
     settle: document.querySelector("#stepSettle"),
   },
 };
+
+const stepOrder = ["account", "guide", "server", "draw", "operate", "settle"];
 
 function freshState() {
   return {
@@ -448,6 +495,9 @@ function freshState() {
     yesterdayNet: 0,
     currentEventId: null,
     selectedActivityId: null,
+    offeredActivityId: null,
+    activityRerollsUsed: 0,
+    guideSeen: false,
     lastReport: null,
     reportSeen: true,
     eventHistory: [],
@@ -504,12 +554,62 @@ function loadAccountState(accountName) {
 let activeAccount = loadActiveAccount();
 let state = loadState();
 let accountConfirmed = false;
+let guideIndex = 0;
+let guideMandatory = false;
 
 function saveState() {
   const accounts = loadAccounts();
   accounts[activeAccount] = state;
   saveAccounts(accounts);
   saveActiveAccount(activeAccount);
+}
+
+function openGuide(index = 0, options = {}) {
+  guideMandatory = Boolean(options.mandatory);
+  guideIndex = clamp(index, 0, guideSteps.length - 1);
+  renderGuide();
+  if (typeof elements.guideDialog.showModal === "function") {
+    elements.guideDialog.showModal();
+  } else {
+    elements.guideDialog.setAttribute("open", "");
+  }
+  window.setTimeout(() => elements.guideNextButton.focus({ preventScroll: true }), 80);
+}
+
+function closeGuide() {
+  if (guideMandatory && !state.guideSeen) return;
+  if (elements.guideDialog.open && typeof elements.guideDialog.close === "function") {
+    elements.guideDialog.close();
+  } else {
+    elements.guideDialog.removeAttribute("open");
+  }
+  guideMandatory = false;
+}
+
+function completeGuide() {
+  state.guideSeen = true;
+  saveState();
+  closeGuide();
+  render();
+  scrollToNextAction();
+}
+
+function renderGuide() {
+  const step = guideSteps[guideIndex];
+  elements.guideTitle.textContent = step.title;
+  elements.guideText.textContent = step.text;
+  elements.guideProgress.textContent = `${guideIndex + 1} / ${guideSteps.length}`;
+  elements.guidePrevButton.disabled = guideIndex === 0;
+  elements.guideNextButton.textContent = guideIndex === guideSteps.length - 1 ? "开始经营" : "下一条";
+  elements.guideSkipButton.hidden = guideMandatory;
+  elements.guideSkipButton.disabled = guideMandatory;
+}
+
+function maybeOpenGuide() {
+  if (!accountConfirmed || state.guideSeen || elements.guideDialog.open) return;
+  window.setTimeout(() => {
+    if (accountConfirmed && !state.guideSeen && !elements.guideDialog.open) openGuide(0, { mandatory: true });
+  }, 120);
 }
 
 function switchAccount(accountName) {
@@ -519,13 +619,36 @@ function switchAccount(accountName) {
   saveState();
   saveActiveAccount(activeAccount);
   render();
-  scrollToStage(getVisibleStage());
+  scrollToNextAction();
+  maybeOpenGuide();
 }
 
 function scrollToStage(stage) {
   const panel = document.querySelector(`[data-stage="${stage}"]`);
   if (!panel) return;
-  window.setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  window.setTimeout(() => panel.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+}
+
+function scrollToElement(element) {
+  if (!element) return;
+  window.setTimeout(() => {
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (typeof element.focus === "function") element.focus({ preventScroll: true });
+  }, 80);
+}
+
+function getNextActionElement() {
+  if (!accountConfirmed) return elements.confirmAccountButton;
+  if (!state.guideSeen) return elements.startGuideButton;
+  if (!state.serverId) return elements.serverCards.querySelector("[data-server]");
+  if (state.lastReport && !state.reportSeen) return elements.continueButton;
+  if (!state.currentEventId) return elements.drawButton;
+  if (!state.selectedActivityId) return elements.activityCards.querySelector("[data-activity]:not([disabled])") || elements.rerollActivityButton;
+  return elements.settleButton;
+}
+
+function scrollToNextAction() {
+  scrollToElement(getNextActionElement() || document.querySelector(`[data-stage="${getVisibleStage()}"]`));
 }
 
 function getServer(id = state.serverId) {
@@ -534,6 +657,16 @@ function getServer(id = state.serverId) {
 
 function getActivity(id = state.selectedActivityId) {
   return activities.find((activity) => activity.id === id) || null;
+}
+
+function getAvailableActivities() {
+  return activities.filter((activity) => !activity.unlockDay || state.day >= activity.unlockDay);
+}
+
+function pickActivityOffer(excludeId = null) {
+  let pool = getAvailableActivities().filter((activity) => activity.id !== excludeId);
+  if (!pool.length) pool = getAvailableActivities();
+  return pool[Math.floor(Math.random() * pool.length)] || activities[0];
 }
 
 function getEvent(id = state.currentEventId) {
@@ -658,9 +791,10 @@ function snapshot() {
 
 function startServer(serverId) {
   const server = getServer(serverId);
-  if (!server) return;
+  if (!server || !state.guideSeen) return;
   state = {
     ...freshState(),
+    guideSeen: true,
     serverId: server.id,
     cash: server.cash,
     active: server.active,
@@ -677,15 +811,18 @@ function startServer(serverId) {
   };
   saveState();
   render();
-  scrollToStage("draw");
+  scrollToNextAction();
 }
 
 function drawEvent() {
   if (!state.serverId || state.currentEventId || state.over) return;
   const draw = pickEventCard();
   const event = draw.event;
+  const offeredActivity = pickActivityOffer();
   state.currentEventId = event.id;
   state.selectedActivityId = null;
+  state.offeredActivityId = offeredActivity.id;
+  state.activityRerollsUsed = 0;
   state.lastReport = null;
   state.reportSeen = true;
   state.lastDrawReason = draw.reason;
@@ -693,17 +830,29 @@ function drawEvent() {
   saveState();
   render();
   if (event.rarity === "gold") celebrateGoldCard();
-  scrollToStage("draw");
+  scrollToNextAction();
 }
 
 function selectActivity(activityId) {
   const activity = activities.find((item) => item.id === activityId);
   if (!activity || !state.currentEventId || state.over) return;
+  if (activity.id !== state.offeredActivityId) return;
   if (activity.unlockDay && state.day < activity.unlockDay) return;
   state.selectedActivityId = activityId;
   saveState();
   render();
-  scrollToStage("draw");
+  scrollToNextAction();
+}
+
+function rerollActivity() {
+  if (!state.currentEventId || state.selectedActivityId || state.over) return;
+  if ((state.activityRerollsUsed || 0) >= MAX_ACTIVITY_REROLLS) return;
+  const offeredActivity = pickActivityOffer(state.offeredActivityId);
+  state.offeredActivityId = offeredActivity.id;
+  state.activityRerollsUsed = (state.activityRerollsUsed || 0) + 1;
+  saveState();
+  render();
+  scrollToNextAction();
 }
 
 function applyActivityEventEffects(activity, event) {
@@ -832,6 +981,8 @@ function settleDay() {
   const result = getSeasonResult();
   state.currentEventId = null;
   state.selectedActivityId = null;
+  state.offeredActivityId = null;
+  state.activityRerollsUsed = 0;
   if (result) {
     state.over = true;
   } else {
@@ -839,7 +990,7 @@ function settleDay() {
   }
   saveState();
   render();
-  scrollToStage("report");
+  scrollToNextAction();
   if (result) showResult(result);
 }
 
@@ -873,7 +1024,8 @@ function resetGame() {
   saveState();
   if (elements.resultDialog.open && typeof elements.resultDialog.close === "function") elements.resultDialog.close();
   render();
-  scrollToStage(getVisibleStage());
+  scrollToNextAction();
+  maybeOpenGuide();
 }
 
 function chooseServerAgain() {
@@ -892,33 +1044,40 @@ function confirmResetGame() {
   resetGame();
 }
 
+function getCurrentStep() {
+  if (!accountConfirmed) return "account";
+  if (!state.guideSeen) return "guide";
+  if (!state.serverId) return "server";
+  if (state.lastReport && !state.reportSeen) return "settle";
+  if (!state.currentEventId) return "draw";
+  if (!state.selectedActivityId) return "operate";
+  return "settle";
+}
+
+function syncStepItem(item, key, currentStep, currentIndex) {
+  const itemIndex = stepOrder.indexOf(key);
+  if (itemIndex < 0) return;
+  item.hidden = itemIndex > currentIndex;
+  item.classList.toggle("done", itemIndex < currentIndex);
+  item.classList.toggle("active", key === currentStep);
+  if (key === currentStep) {
+    item.setAttribute("aria-current", "step");
+  } else {
+    item.removeAttribute("aria-current");
+  }
+}
+
 function renderSteps() {
-  Object.values(elements.steps).forEach((item) => item.classList.remove("active", "done"));
-  if (!accountConfirmed) {
-    elements.steps.account.classList.add("active");
-    return;
-  }
-  elements.steps.account.classList.add("done");
-  if (!state.serverId) {
-    elements.steps.server.classList.add("active");
-    return;
-  }
-  elements.steps.server.classList.add("done");
-  if (state.lastReport && !state.reportSeen) {
-    elements.steps.draw.classList.add("done");
-    elements.steps.operate.classList.add("done");
-    elements.steps.settle.classList.add("active");
-    return;
-  }
-  if (!state.currentEventId && !state.selectedActivityId) elements.steps.draw.classList.add("active");
-  if (state.currentEventId) elements.steps.draw.classList.add("done");
-  if (state.currentEventId && !state.selectedActivityId) elements.steps.operate.classList.add("active");
-  if (state.selectedActivityId) elements.steps.operate.classList.add("done");
-  if (state.currentEventId && state.selectedActivityId) elements.steps.settle.classList.add("active");
+  const currentStep = getCurrentStep();
+  const currentIndex = stepOrder.indexOf(currentStep);
+  stepOrder.forEach((key) => syncStepItem(elements.steps[key], key, currentStep, currentIndex));
+  elements.ruleSteps.forEach((item) => syncStepItem(item, item.dataset.step, currentStep, currentIndex));
+  document.body.dataset.currentStep = currentStep;
 }
 
 function getVisibleStage() {
   if (!accountConfirmed) return "account";
+  if (!state.guideSeen) return "guide";
   if (!state.serverId) return "server";
   if (state.lastReport && !state.reportSeen) return "report";
   return "draw";
@@ -926,6 +1085,8 @@ function getVisibleStage() {
 
 function renderStagePanels() {
   const visibleStage = getVisibleStage();
+  document.body.dataset.visibleStage = visibleStage;
+  elements.topBoard.hidden = !state.lastReport;
   elements.stagePanels.forEach((panel) => {
     panel.hidden = panel.dataset.stage !== visibleStage;
     if (panel.dataset.stage === "draw") {
@@ -940,6 +1101,7 @@ function renderMetrics() {
   const progress = server ? getTargetProgress() : 0;
   const progressPercent = Math.min(100, Math.round(progress * 100));
   elements.accountInput.value = activeAccount;
+  elements.topAccountInput.value = activeAccount;
   elements.targetMetric.textContent = server ? `7 天目标 ${money(server.targetRevenue)} 流水` : "先选择服务器";
   elements.serverFlavor.textContent = server ? server.desc : "不同服务器决定玩家结构、付费强度和风险底色。";
   elements.dayMetric.textContent = server ? `D${Math.min(state.day, MAX_DAY)}/${MAX_DAY}` : "未开服";
@@ -973,7 +1135,7 @@ function renderMetrics() {
         ? "最后一天未达标将项目卒"
         : `剩余 ${Math.max(0, MAX_DAY - state.day + 1)} 天，落后时可能触发金卡补偿`
     : "7 天内达标，否则项目卒";
-  document.querySelector(".top-board").classList.toggle("settled", Boolean(state.lastReport));
+  elements.topBoard.classList.toggle("settled", Boolean(state.lastReport));
 }
 
 function renderLeaderboard() {
@@ -1005,6 +1167,72 @@ function renderLeaderboard() {
         )
         .join("")
     : `<li class="empty-rank"><strong>暂无账号流水</strong><small>确认账号并开始运营后会进入排行榜。</small></li>`;
+}
+
+function getMentorState() {
+  const server = getServer();
+  if (!accountConfirmed) {
+    return {
+      title: "任务 1：确认账号",
+      text: "先输入账号名并确认。确认后我会把你带到创角选服，所有账号进度会独立保存。",
+      action: "确认账号",
+      stage: "account",
+    };
+  }
+  if (!state.guideSeen) {
+    return {
+      title: "任务 2：完成开局引导",
+      text: "每个账号第一次开局前必须看完引导。完成后才会开放创角选服。",
+      action: "开始引导",
+      stage: "guide",
+    };
+  }
+  if (!server) {
+    return {
+      title: "任务 3：选择首服类型",
+      text: "选服决定 7 天目标和玩家结构。绿色服稳，土豪服爆发强，滚服冲榜快。",
+      action: "去选服",
+      stage: "server",
+    };
+  }
+  if (state.lastReport && !state.reportSeen) {
+    return {
+      title: "任务 6：查看当日结算",
+      text: "先看流水、支出和反馈，再进入下一天。别忘了看目标进度条是否落后。",
+      action: "查看结算",
+      stage: "report",
+    };
+  }
+  if (!state.currentEventId) {
+    return {
+      title: `任务 4：D${state.day} 抽运营卡`,
+      text: "抽卡前会先判定必出条件：落后补金卡，领先可能吃红卡，最近 3 天不重复。",
+      action: "去抽卡",
+      stage: "draw",
+    };
+  }
+  if (!state.selectedActivityId) {
+    return {
+      title: "任务 5：按卡面做运营",
+      text: "系统每天随机给 1 个运营活动。你可以直接选，也可以点“换一个”，每天最多换 3 次。",
+      action: "选活动",
+      stage: "draw",
+    };
+  }
+  return {
+    title: "任务 6：结算当日流水",
+    text: "活动已选好，现在结算当日流水。净收益会推进 7 天赚钱进度条。",
+    action: "去结算",
+    stage: "draw",
+  };
+}
+
+function renderMentor() {
+  const mentor = getMentorState();
+  elements.mentorTitle.textContent = mentor.title;
+  elements.mentorText.textContent = mentor.text;
+  elements.mentorActionButton.textContent = mentor.action;
+  elements.mentorActionButton.dataset.stage = mentor.stage;
 }
 
 function renderServers() {
@@ -1048,22 +1276,28 @@ function renderActivities() {
   const canOperate = Boolean(state.currentEventId) && !state.over;
   const activityPanel = document.querySelector(".activity-panel");
   activityPanel.hidden = !canOperate;
-  elements.activityCards.innerHTML = activities
-    .map((activity) => {
-      const locked = activity.unlockDay && state.day < activity.unlockDay;
-      const disabled = !canOperate || locked;
-      return `
-        <button class="activity-card ${state.selectedActivityId === activity.id ? "selected" : ""} ${disabled ? "disabled" : ""}" data-activity="${activity.id}" ${disabled ? "disabled" : ""}>
-          <div class="activity-top"><strong>${activity.name}</strong><span>${activity.tag}</span></div>
-          <p>${activity.desc}</p>
+  const rerollsUsed = state.activityRerollsUsed || 0;
+  const rerollsLeft = Math.max(0, MAX_ACTIVITY_REROLLS - rerollsUsed);
+  const offeredActivity = getActivity(state.offeredActivityId) || (canOperate ? pickActivityOffer() : null);
+  if (canOperate && offeredActivity && !state.offeredActivityId) {
+    state.offeredActivityId = offeredActivity.id;
+    saveState();
+  }
+  elements.activityCards.classList.toggle("single-activity", Boolean(canOperate));
+  elements.activityRerollMetric.textContent = state.selectedActivityId ? "已锁定活动" : `今日还能换 ${rerollsLeft} 次`;
+  elements.rerollActivityButton.disabled = !canOperate || Boolean(state.selectedActivityId) || rerollsLeft <= 0;
+  elements.activityCards.innerHTML = offeredActivity
+    ? `
+        <button class="activity-card ${state.selectedActivityId === offeredActivity.id ? "selected" : ""}" data-activity="${offeredActivity.id}" ${!canOperate ? "disabled" : ""}>
+          <div class="activity-top"><strong>${offeredActivity.name}</strong><span>${offeredActivity.tag}</span></div>
+          <p>${offeredActivity.desc}</p>
           <div class="activity-meta">
-            <span>成本 ${money(activity.cost)}</span>
-            <span>基础流水 ${money(activity.revenue)}</span>
-            <span>${locked ? `第 ${activity.unlockDay} 天解锁` : `活跃 ${activity.active >= 0 ? "+" : ""}${activity.active}`}</span>
+            <span>成本 ${money(offeredActivity.cost)}</span>
+            <span>基础流水 ${money(offeredActivity.revenue)}</span>
+            <span>活跃 ${offeredActivity.active >= 0 ? "+" : ""}${offeredActivity.active}</span>
           </div>
-        </button>`;
-    })
-    .join("");
+        </button>`
+    : `<div class="empty-state">抽取运营卡后，系统会随机发 1 个今日运营活动。</div>`;
   elements.settleButton.disabled = !state.currentEventId || !state.selectedActivityId || state.over;
   activityPanel.classList.toggle("locked-panel", !state.currentEventId);
 }
@@ -1106,6 +1340,7 @@ function render() {
   renderSteps();
   renderMetrics();
   renderLeaderboard();
+  renderMentor();
   renderServers();
   renderEventCard();
   renderActivities();
@@ -1152,20 +1387,62 @@ elements.activityCards.addEventListener("click", (event) => {
 });
 
 elements.drawButton.addEventListener("click", drawEvent);
+elements.rerollActivityButton.addEventListener("click", rerollActivity);
 elements.settleButton.addEventListener("click", settleDay);
 elements.continueButton.addEventListener("click", () => {
   state.reportSeen = true;
   saveState();
   render();
-  scrollToStage("draw");
+  scrollToNextAction();
 });
 elements.switchAccountButton.addEventListener("click", () => switchAccount(elements.accountInput.value));
 elements.confirmAccountButton.addEventListener("click", () => switchAccount(elements.accountInput.value));
 elements.accountInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") switchAccount(elements.accountInput.value);
 });
+elements.topSwitchAccountButton.addEventListener("click", () => switchAccount(elements.topAccountInput.value));
+elements.topAccountInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") switchAccount(elements.topAccountInput.value);
+});
 elements.chooseServerButton.addEventListener("click", chooseServerAgain);
+elements.topChooseServerButton.addEventListener("click", chooseServerAgain);
 elements.resetButton.addEventListener("click", confirmResetGame);
+elements.topResetButton.addEventListener("click", confirmResetGame);
 elements.dialogResetButton.addEventListener("click", resetGame);
+elements.startGuideButton.addEventListener("click", () => openGuide(0, { mandatory: true }));
+elements.guideButton.addEventListener("click", () => openGuide(0));
+elements.guideDialog.addEventListener("cancel", (event) => {
+  if (guideMandatory && !state.guideSeen) event.preventDefault();
+});
+elements.guidePrevButton.addEventListener("click", () => {
+  guideIndex = Math.max(0, guideIndex - 1);
+  renderGuide();
+});
+elements.guideNextButton.addEventListener("click", () => {
+  if (guideIndex >= guideSteps.length - 1) {
+    if (guideMandatory) {
+      completeGuide();
+    } else {
+      closeGuide();
+      scrollToNextAction();
+    }
+    return;
+  }
+  guideIndex += 1;
+  renderGuide();
+});
+elements.guideSkipButton.addEventListener("click", closeGuide);
+elements.mentorActionButton.addEventListener("click", () => {
+  const mentor = getMentorState();
+  if (!accountConfirmed) {
+    elements.accountInput.focus();
+  } else if (!state.guideSeen) {
+    openGuide(0, { mandatory: true });
+    return;
+  }
+  scrollToStage(mentor.stage);
+});
 
 render();
+scrollToNextAction();
+maybeOpenGuide();
